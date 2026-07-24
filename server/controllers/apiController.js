@@ -1,6 +1,7 @@
 const getHome = (req, res) => {
     res.json({
-        message: "Welcome to AI Resume Matcher Backend"
+        success: true,
+        message: "Backend Working"
     });
 };
 
