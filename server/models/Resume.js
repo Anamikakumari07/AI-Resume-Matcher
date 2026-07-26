@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const resumeSchema = new mongoose.Schema({
+
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -21,6 +22,17 @@ const resumeSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+
+    analysis: {
+        type: String,
+        default: "",
+    },
+
+    atsScore: {
+        type: Number,
+        default: 0,
+    }
+
 });
 
 module.exports = mongoose.model("Resume", resumeSchema);
