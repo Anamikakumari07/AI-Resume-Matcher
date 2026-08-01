@@ -1,84 +1,207 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import API from "../services/api";
+import toast from "react-hot-toast";
+import ATSChart from "../components/ATSChart";
 
 function Dashboard() {
 
-    const navigate = useNavigate();
+    const [stats, setStats] = useState({
+        totalResumes: 0,
+        averageATS: 0,
+        totalMatches: 0,
+        latestResume: null,
+    });
 
-    const handleLogout = () => {
+    const [resumes, setResumes] = useState([]);
 
-        localStorage.removeItem("token");
+    useEffect(() => {
+        fetchDashboard();
+    }, []);
 
-        navigate("/");
+    const fetchDashboard = async () => {
+
+        try {
+
+            // Get resumes
+            const resumeRes = await API.get("/resume/my-resumes");
+            const resumeList = resumeRes.data.resumes;
+
+            setResumes(resumeList);
+
+            // Calculate Average ATS
+            let average = 0;
+
+            if (resumeList.length > 0) {
+
+                average =
+                    resumeList.reduce(
+                        (sum, item) => sum + item.atsScore,
+                        0
+                    ) / resumeList.length;
+
+            }
+
+            // Get AI Job Matches
+            const jobRes = await API.get("/jobs/match");
+
+            setStats({
+                totalResumes: resumeList.length,
+                averageATS: average.toFixed(1),
+                totalMatches: jobRes.data.bestMatches.length,
+                latestResume: resumeList[0] || null,
+            });
+
+        } catch (error) {
+
+            console.log(error);
+
+            toast.error("Failed to load dashboard");
+
+        }
 
     };
 
     return (
 
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-100 p-8">
 
-            <div className="bg-blue-600 text-white p-5 flex justify-between items-center">
+            <h1 className="text-4xl font-bold mb-8">
+                Dashboard
+            </h1>
 
-                <h1 className="text-2xl font-bold">
-                    AI Resume Matcher
-                </h1>
+            {/* Dashboard Cards */}
 
-                <button
-                    onClick={handleLogout}
-                    className="bg-red-500 px-4 py-2 rounded hover:bg-red-600"
-                >
-                    Logout
-                </button>
+            <div className="grid md:grid-cols-3 gap-6">
+
+                <div className="bg-white rounded-xl shadow-lg p-6">
+
+                    <h2 className="text-gray-500">
+                        Total Resumes
+                    </h2>
+
+                    <p className="text-5xl font-bold mt-3">
+                        {stats.totalResumes}
+                    </p>
+
+                </div>
+
+                <div className="bg-white rounded-xl shadow-lg p-6">
+
+                    <h2 className="text-gray-500">
+                        Average ATS Score
+                    </h2>
+
+                    <p className="text-5xl font-bold text-green-600 mt-3">
+                        {stats.averageATS}
+                    </p>
+
+                </div>
+
+                <div className="bg-white rounded-xl shadow-lg p-6">
+
+                    <h2 className="text-gray-500">
+                        Job Matches
+                    </h2>
+
+                    <p className="text-5xl font-bold text-blue-600 mt-3">
+                        {stats.totalMatches}
+                    </p>
+
+                </div>
 
             </div>
 
-            <div className="max-w-6xl mx-auto py-10">
+            {/* ATS Score Chart */}
 
-                <h2 className="text-3xl font-bold mb-8">
-                    Welcome 👋
+            <div className="bg-white rounded-xl shadow-lg p-6 mt-10">
+
+                <h2 className="text-2xl font-bold mb-5">
+                    ATS Score History
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {resumes.length > 0 ? (
 
-                    <div
-                        onClick={() => navigate("/upload")}
-                        className="bg-white shadow-lg rounded-xl p-8 cursor-pointer hover:shadow-2xl"
-                    >
-                        <h3 className="text-xl font-semibold">
-                            📄 Upload Resume
-                        </h3>
+                    <ATSChart resumes={resumes} />
 
-                        <p className="mt-3 text-gray-600">
-                            Upload your latest resume for AI analysis.
-                        </p>
-                    </div>
+                ) : (
 
-                    <div
-                        onClick={() => navigate("/history")}
-                        className="bg-white shadow-lg rounded-xl p-8 cursor-pointer hover:shadow-2xl"
-                    >
-                        <h3 className="text-xl font-semibold">
-                            📂 Resume History
-                        </h3>
+                    <p>No Data Available</p>
 
-                        <p className="mt-3 text-gray-600">
-                            View all uploaded resumes.
-                        </p>
-                    </div>
+                )}
 
-                    <div
-                        onClick={() => navigate("/jobs")}
-                        className="bg-white shadow-lg rounded-xl p-8 cursor-pointer hover:shadow-2xl"
-                    >
-                        <h3 className="text-xl font-semibold">
-                            💼 Job Matches
-                        </h3>
+            </div>
 
-                        <p className="mt-3 text-gray-600">
-                            View AI recommended jobs.
-                        </p>
-                    </div>
+            {/* Latest Resume */}
+
+            {stats.latestResume && (
+
+                <div className="bg-white rounded-xl shadow-lg p-6 mt-10">
+
+                    <h2 className="text-2xl font-bold mb-5">
+                        Latest Resume
+                    </h2>
+
+                    <p>
+                        <strong>Filename:</strong>{" "}
+                        {stats.latestResume.filename}
+                    </p>
+
+                    <p className="mt-2">
+                        <strong>ATS Score:</strong>{" "}
+                        {stats.latestResume.atsScore}/100
+                    </p>
+
+                    <p className="mt-2">
+                        <strong>Uploaded:</strong>{" "}
+                        {new Date(
+                            stats.latestResume.uploadedAt
+                        ).toLocaleString()}
+                    </p>
 
                 </div>
+
+            )}
+
+            {/* Recent Activity */}
+
+            <div className="bg-white rounded-xl shadow-lg p-6 mt-10">
+
+                <h2 className="text-2xl font-bold mb-5">
+                    Recent Activity
+                </h2>
+
+                {resumes.length === 0 ? (
+
+                    <p>No Activity</p>
+
+                ) : (
+
+                    resumes.slice(0, 5).map((resume) => (
+
+                        <div
+                            key={resume._id}
+                            className="border-b py-3"
+                        >
+
+                            <p className="font-semibold">
+                                {resume.filename}
+                            </p>
+
+                            <p className="text-gray-500">
+                                ATS Score: {resume.atsScore}
+                            </p>
+
+                            <p className="text-gray-400 text-sm">
+                                {new Date(
+                                    resume.uploadedAt
+                                ).toLocaleString()}
+                            </p>
+
+                        </div>
+
+                    ))
+
+                )}
 
             </div>
 
