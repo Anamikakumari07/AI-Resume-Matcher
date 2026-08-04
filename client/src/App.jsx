@@ -7,6 +7,8 @@ import UploadResume from "./pages/UploadResume";
 import ResumeHistory from "./pages/ResumeHistory";
 import JobMatches from "./pages/JobMatches";
 import Profile from "./pages/Profile";
+import AdminDashboard from "./pages/AdminDashboard";
+
 function App() {
 
     return (
@@ -25,8 +27,12 @@ function App() {
 
             <Route path="/jobs" element={<JobMatches />} />
 
-            <Route path="/profile"element={<Profile />}
-/>
+            <Route path="/profile" element={<Profile />} />
+
+            <Route
+                path="/admin"
+                element={<AdminDashboard />}
+            />
 
         </Routes>
 
