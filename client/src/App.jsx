@@ -8,6 +8,7 @@ import ResumeHistory from "./pages/ResumeHistory";
 import JobMatches from "./pages/JobMatches";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import MyApplications from "./pages/MyApplications";
 
 function App() {
 
@@ -29,9 +30,11 @@ function App() {
 
             <Route path="/profile" element={<Profile />} />
 
+            <Route path="/admin" element={<AdminDashboard />} />
+
             <Route
-                path="/admin"
-                element={<AdminDashboard />}
+                path="/applications"
+                element={<MyApplications />}
             />
 
         </Routes>
