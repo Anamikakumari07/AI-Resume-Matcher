@@ -6,9 +6,10 @@ import Dashboard from "./pages/Dashboard";
 import UploadResume from "./pages/UploadResume";
 import ResumeHistory from "./pages/ResumeHistory";
 import JobMatches from "./pages/JobMatches";
+import SavedJobs from "./pages/SavedJobs";
+import MyApplications from "./pages/MyApplications";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
-import MyApplications from "./pages/MyApplications";
 
 function App() {
 
@@ -16,25 +17,98 @@ function App() {
 
         <Routes>
 
-            <Route path="/" element={<Login />} />
-
-            <Route path="/register" element={<Register />} />
-
-            <Route path="/dashboard" element={<Dashboard />} />
-
-            <Route path="/upload" element={<UploadResume />} />
-
-            <Route path="/history" element={<ResumeHistory />} />
-
-            <Route path="/jobs" element={<JobMatches />} />
-
-            <Route path="/profile" element={<Profile />} />
-
-            <Route path="/admin" element={<AdminDashboard />} />
+            {/* Authentication */}
 
             <Route
+
+                path="/"
+
+                element={<Login />}
+
+            />
+
+            <Route
+
+                path="/register"
+
+                element={<Register />}
+
+            />
+
+            {/* Dashboard */}
+
+            <Route
+
+                path="/dashboard"
+
+                element={<Dashboard />}
+
+            />
+
+            {/* Resume */}
+
+            <Route
+
+                path="/upload"
+
+                element={<UploadResume />}
+
+            />
+
+            <Route
+
+                path="/history"
+
+                element={<ResumeHistory />}
+
+            />
+
+            {/* AI Jobs */}
+
+            <Route
+
+                path="/jobs"
+
+                element={<JobMatches />}
+
+            />
+
+            <Route
+
+                path="/saved-jobs"
+
+                element={<SavedJobs />}
+
+            />
+
+            {/* Applications */}
+
+            <Route
+
                 path="/applications"
+
                 element={<MyApplications />}
+
+            />
+
+            {/* Profile */}
+
+            <Route
+
+                path="/profile"
+
+                element={<Profile />}
+
+            />
+
+            {/* Admin */}
+
+            <Route
+
+                path="/admin"
+
+                element={<AdminDashboard />}
+
             />
 
         </Routes>

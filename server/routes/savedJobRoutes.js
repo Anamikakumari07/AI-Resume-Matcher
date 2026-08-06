@@ -1,38 +1,36 @@
 const express = require("express");
+
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
-const upload = require("../middleware/uploadMiddleware");
 
 const {
 
-    uploadResume,
+    saveJob,
 
-    getMyResumes,
+    getSavedJobs,
 
-    deleteResume,
+    deleteSavedJob,
 
-} = require("../controllers/resumeController");
+} = require("../controllers/savedJobController");
 
 router.post(
 
-    "/upload",
+    "/save",
 
     authMiddleware,
 
-    upload.single("resume"),
-
-    uploadResume
+    saveJob
 
 );
 
 router.get(
 
-    "/my-resumes",
+    "/",
 
     authMiddleware,
 
-    getMyResumes
+    getSavedJobs
 
 );
 
@@ -42,7 +40,7 @@ router.delete(
 
     authMiddleware,
 
-    deleteResume
+    deleteSavedJob
 
 );
 

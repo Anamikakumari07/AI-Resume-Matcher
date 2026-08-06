@@ -1,32 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import API from "../services/api";
 import toast from "react-hot-toast";
+import Layout from "../components/Layout";
 
 function MyApplications() {
 
     const [applications, setApplications] = useState([]);
-
-    const fetchApplications = async () => {
-
-        try {
-
-            const res = await API.get("/application/my-applications");
-
-            setApplications(res.data.applications);
-
-        }
-
-        catch (error) {
-
-            toast.error(
-                error.response?.data?.message ||
-                "Unable to load applications"
-            );
-
-        }
-
-    };
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
 
@@ -34,16 +14,51 @@ function MyApplications() {
 
     }, []);
 
+    const fetchApplications = async () => {
+
+        try {
+
+            const res = await API.get("/application/my");
+
+            setApplications(res.data.applications);
+
+        }
+
+        catch (error) {
+
+            console.log(error);
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                "Unable to Load Applications"
+
+            );
+
+        }
+
+        finally {
+
+            setLoading(false);
+
+        }
+
+    };
+
     const deleteApplication = async (id) => {
 
-        if (!window.confirm("Withdraw this application?"))
+        if (!window.confirm("Delete this application?")) {
+
             return;
+
+        }
 
         try {
 
             await API.delete(`/application/${id}`);
 
-            toast.success("Application Withdrawn");
+            toast.success("Application Deleted");
 
             fetchApplications();
 
@@ -51,81 +66,65 @@ function MyApplications() {
 
         catch (error) {
 
-            toast.error(error.response?.data?.message);
+            toast.error(
+
+                error.response?.data?.message ||
+
+                "Unable to Delete"
+
+            );
 
         }
 
     };
 
-    const getStatusColor = (status) => {
+    if (loading) {
 
-        switch (status) {
+        return (
 
-            case "Selected":
-                return "bg-green-600";
+            <Layout>
 
-            case "Interview":
-                return "bg-blue-600";
+                <div className="flex justify-center items-center h-[70vh] text-2xl font-bold">
 
-            case "Rejected":
-                return "bg-red-600";
+                    Loading Applications...
 
-            default:
-                return "bg-yellow-500";
+                </div>
 
-        }
+            </Layout>
 
-    };
+        );
+
+    }
 
     return (
 
-        <div className="min-h-screen bg-gray-100 p-8">
+        <Layout>
 
-            <div className="flex justify-between items-center mb-8">
+            <div>
 
-                <h1 className="text-4xl font-bold">
+                <div className="flex justify-between items-center mb-8">
 
-                    My Applications
+                    <h1 className="text-4xl font-bold">
 
-                </h1>
+                        My Applications
 
-                <Link
+                    </h1>
 
-                    to="/jobs"
+                    <span className="bg-blue-600 text-white px-5 py-2 rounded-lg">
 
-                    className="bg-blue-600 text-white px-5 py-2 rounded-lg"
+                        {applications.length} Applications
 
-                >
+                    </span>
 
-                    Apply More Jobs
+                </div>
 
-                </Link>
+                {
 
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-5 mb-8">
-
-                <h2 className="text-xl font-semibold">
-
-                    Total Applications
-
-                </h2>
-
-                <p className="text-5xl font-bold text-blue-600 mt-3">
-
-                    {applications.length}
-
-                </p>
-
-            </div>
-
-            {
-
-                applications.length === 0 ?
+                    applications.length === 0 ?
 
                     (
 
-                        <div className="bg-white rounded-xl shadow-lg p-10 text-center">
+                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
 
                             <h2 className="text-2xl font-bold">
 
@@ -133,23 +132,11 @@ function MyApplications() {
 
                             </h2>
 
-                            <p className="mt-3 text-gray-500">
+                            <p className="text-gray-500 mt-3">
 
-                                Start applying to AI recommended jobs.
+                                Apply to jobs from the AI Job Matches page.
 
                             </p>
-
-                            <Link
-
-                                to="/jobs"
-
-                                className="inline-block mt-5 bg-blue-600 text-white px-6 py-3 rounded-lg"
-
-                            >
-
-                                Browse Jobs
-
-                            </Link>
 
                         </div>
 
@@ -159,75 +146,135 @@ function MyApplications() {
 
                     (
 
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-6">
 
                             {
 
-                                applications.map((app) => (
+                                applications.map((application) => (
 
                                     <div
 
-                                        key={app._id}
+                                        key={application._id}
 
                                         className="bg-white rounded-xl shadow-lg p-6"
 
                                     >
 
-                                        <h2 className="text-2xl font-bold">
+                                        <div className="flex justify-between items-start">
 
-                                            {app.position}
+                                            <div>
 
-                                        </h2>
+                                                <h2 className="text-2xl font-bold">
 
-                                        <p className="text-gray-600 mt-2">
+                                                    {application.position}
 
-                                            {app.company}
+                                                </h2>
 
-                                        </p>
+                                                <p className="text-gray-600 mt-2">
 
-                                        <p>
+                                                    {application.company}
 
-                                            📍 {app.location}
+                                                </p>
 
-                                        </p>
+                                                <p className="text-gray-500">
 
-                                        <p>
+                                                    {application.location}
 
-                                            💰 {app.salary}
+                                                </p>
 
-                                        </p>
+                                                <p className="mt-2">
 
-                                        <p>
+                                                    <strong>Salary:</strong>{" "}
 
-                                            💼 {app.jobType}
+                                                    {application.salary}
 
-                                        </p>
+                                                </p>
 
-                                        <div className="mt-5">
+                                                <p>
+
+                                                    <strong>Job Type:</strong>{" "}
+
+                                                    {application.jobType}
+
+                                                </p>
+
+                                            </div>
 
                                             <span
 
-                                                className={`${getStatusColor(app.status)} text-white px-4 py-2 rounded-full`}
+                                                className={`px-4 py-2 rounded-full text-white font-bold ${
+
+                                                    application.status === "Applied"
+
+                                                        ? "bg-blue-600"
+
+                                                        : application.status === "Interview"
+
+                                                        ? "bg-yellow-500"
+
+                                                        : application.status === "Rejected"
+
+                                                        ? "bg-red-600"
+
+                                                        : "bg-green-600"
+
+                                                }`}
 
                                             >
 
-                                                {app.status}
+                                                {application.status}
 
                                             </span>
 
                                         </div>
 
-                                        <button
+                                        <div className="mt-6">
 
-                                            onClick={() => deleteApplication(app._id)}
+                                            <p className="text-gray-500">
 
-                                            className="mt-6 bg-red-600 text-white px-5 py-2 rounded-lg"
+                                                Applied On
 
-                                        >
+                                            </p>
 
-                                            Withdraw
+                                            <p>
 
-                                        </button>
+                                                {
+
+                                                    new Date(
+
+                                                        application.createdAt
+
+                                                    ).toLocaleString()
+
+                                                }
+
+                                            </p>
+
+                                        </div>
+
+                                        <div className="mt-6">
+
+                                            <button
+
+                                                onClick={() =>
+
+                                                    deleteApplication(
+
+                                                        application._id
+
+                                                    )
+
+                                                }
+
+                                                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
+
+                                            >
+
+                                                Delete
+
+                                            </button>
+
+                                        </div>
 
                                     </div>
 
@@ -239,9 +286,11 @@ function MyApplications() {
 
                     )
 
-            }
+                }
 
-        </div>
+            </div>
+
+        </Layout>
 
     );
 

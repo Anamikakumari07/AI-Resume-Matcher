@@ -6,13 +6,25 @@ import toast from "react-hot-toast";
 function JobMatches() {
 
     const [jobs, setJobs] = useState([]);
+    const [filteredJobs, setFilteredJobs] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const [search, setSearch] = useState("");
+    const [filter, setFilter] = useState("All");
 
     const navigate = useNavigate();
 
     useEffect(() => {
+
         fetchJobs();
+
     }, []);
+
+    useEffect(() => {
+
+        filterJobs();
+
+    }, [search, filter, jobs]);
 
     const fetchJobs = async () => {
 
@@ -22,20 +34,72 @@ function JobMatches() {
 
             setJobs(res.data.bestMatches);
 
-        } catch (error) {
+            setFilteredJobs(res.data.bestMatches);
 
-            console.log(error);
+        }
+
+        catch (error) {
 
             toast.error(
                 error.response?.data?.message ||
-                "Unable to load job matches"
+                "Unable to load jobs"
             );
 
-        } finally {
+        }
+
+        finally {
 
             setLoading(false);
 
         }
+
+    };
+
+    const filterJobs = () => {
+
+        let data = [...jobs];
+
+        if (search !== "") {
+
+            data = data.filter((job) =>
+                job.title.toLowerCase().includes(search.toLowerCase()) ||
+                job.company.toLowerCase().includes(search.toLowerCase())
+            );
+
+        }
+
+        if (filter === "80+") {
+
+            data = data.filter((job) => job.matchPercentage >= 80);
+
+        }
+
+        if (filter === "60+") {
+
+            data = data.filter(
+
+                (job) =>
+
+                    job.matchPercentage >= 60 &&
+                    job.matchPercentage < 80
+
+            );
+
+        }
+
+        if (filter === "Below60") {
+
+            data = data.filter(
+
+                (job) =>
+
+                    job.matchPercentage < 60
+
+            );
+
+        }
+
+        setFilteredJobs(data);
 
     };
 
@@ -57,7 +121,7 @@ function JobMatches() {
 
             });
 
-            toast.success("Application Submitted Successfully");
+            toast.success("Application Submitted");
 
             navigate("/applications");
 
@@ -77,11 +141,47 @@ function JobMatches() {
 
     };
 
+    const saveJob = async (job) => {
+
+        try {
+
+            await API.post("/saved-jobs/save", {
+
+                company: job.company,
+
+                title: job.title,
+
+                location: job.location,
+
+                matchPercentage: job.matchPercentage,
+
+                reason: job.reason,
+
+            });
+
+            toast.success("Job Saved");
+
+        }
+
+        catch (error) {
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                "Unable to Save"
+
+            );
+
+        }
+
+    };
+
     if (loading) {
 
         return (
 
-            <div className="flex justify-center items-center h-screen text-2xl font-semibold">
+            <div className="flex justify-center items-center h-screen text-2xl font-bold">
 
                 Loading AI Job Matches...
 
@@ -95,85 +195,91 @@ function JobMatches() {
 
         <div className="min-h-screen bg-gray-100 p-8">
 
-            <h1 className="text-4xl font-bold mb-8">
+            <div className="flex justify-between items-center mb-8">
 
-                AI Job Matches
+                <h1 className="text-4xl font-bold">
 
-            </h1>
+                    AI Job Matches
+
+                </h1>
+
+                <button
+
+                    onClick={() => navigate("/saved-jobs")}
+
+                    className="bg-purple-600 text-white px-5 py-2 rounded"
+
+                >
+
+                    Saved Jobs
+
+                </button>
+
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-5 mb-8">
+
+                <input
+
+                    type="text"
+
+                    placeholder="Search Company or Job"
+
+                    value={search}
+
+                    onChange={(e) => setSearch(e.target.value)}
+
+                    className="border p-3 rounded-lg"
+
+                />
+
+                <select
+
+                    value={filter}
+
+                    onChange={(e) => setFilter(e.target.value)}
+
+                    className="border p-3 rounded-lg"
+
+                >
+
+                    <option value="All">
+
+                        All Matches
+
+                    </option>
+
+                    <option value="80+">
+
+                        80%+
+
+                    </option>
+
+                    <option value="60+">
+
+                        60-79%
+
+                    </option>
+
+                    <option value="Below60">
+
+                        Below 60%
+
+                    </option>
+
+                </select>
+
+            </div>
 
             {
 
-                jobs.length > 0 && (
-
-                    <div className="grid md:grid-cols-3 gap-6 mb-8">
-
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-
-                            <h2 className="text-gray-500">
-
-                                Total Matches
-
-                            </h2>
-
-                            <p className="text-4xl font-bold mt-3">
-
-                                {jobs.length}
-
-                            </p>
-
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-
-                            <h2 className="text-gray-500">
-
-                                Best Match
-
-                            </h2>
-
-                            <p className="text-4xl font-bold text-green-600 mt-3">
-
-                                {jobs[0].matchPercentage}%
-
-                            </p>
-
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-
-                            <h2 className="text-gray-500">
-
-                                Top Company
-
-                            </h2>
-
-                            <p className="text-2xl font-bold mt-3">
-
-                                {jobs[0].company}
-
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                )
-
-            }
-
-            {
-
-                jobs.length === 0 ?
+                filteredJobs.length === 0 ?
 
                     (
 
                         <div className="bg-white rounded-xl shadow-lg p-8">
 
-                            <p className="text-xl">
-
-                                No matching jobs found.
-
-                            </p>
+                            No Matching Jobs
 
                         </div>
 
@@ -187,7 +293,7 @@ function JobMatches() {
 
                             {
 
-                                jobs.map((job, index) => (
+                                filteredJobs.map((job, index) => (
 
                                     <div
 
@@ -197,7 +303,7 @@ function JobMatches() {
 
                                     >
 
-                                        <div className="flex justify-between items-start">
+                                        <div className="flex justify-between">
 
                                             <div>
 
@@ -207,13 +313,13 @@ function JobMatches() {
 
                                                 </h2>
 
-                                                <p className="text-gray-500 mt-1">
+                                                <p>
 
                                                     {job.company}
 
                                                 </p>
 
-                                                <p className="text-gray-500">
+                                                <p>
 
                                                     {job.location}
 
@@ -225,7 +331,7 @@ function JobMatches() {
 
                                                 index === 0 && (
 
-                                                    <span className="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold">
+                                                    <span className="bg-yellow-400 px-4 py-2 rounded-full">
 
                                                         🏆 Best Match
 
@@ -237,29 +343,27 @@ function JobMatches() {
 
                                         </div>
 
-                                        <div className="mt-6">
+                                        <div className="mt-5">
 
-                                            <div className="flex justify-between mb-2">
+                                            <p>
 
-                                                <span className="font-medium">
+                                                Match :
 
-                                                    Match Percentage
+                                                <strong>
 
-                                                </span>
-
-                                                <span className="font-bold">
+                                                    {" "}
 
                                                     {job.matchPercentage}%
 
-                                                </span>
+                                                </strong>
 
-                                            </div>
+                                            </p>
 
-                                            <div className="w-full bg-gray-200 rounded-full h-4">
+                                            <div className="w-full bg-gray-200 h-3 rounded mt-2">
 
                                                 <div
 
-                                                    className={`h-4 rounded-full ${
+                                                    className={`h-3 rounded ${
                                                         job.matchPercentage >= 80
                                                             ? "bg-green-500"
                                                             : job.matchPercentage >= 60
@@ -268,7 +372,11 @@ function JobMatches() {
                                                     }`}
 
                                                     style={{
-                                                        width: `${job.matchPercentage}%`,
+
+                                                        width:
+
+                                                            `${job.matchPercentage}%`
+
                                                     }}
 
                                                 ></div>
@@ -277,19 +385,9 @@ function JobMatches() {
 
                                         </div>
 
-                                        <div className="mt-6">
+                                        <div className="mt-5 bg-gray-100 p-4 rounded">
 
-                                            <h3 className="text-lg font-bold mb-3">
-
-                                                AI Recommendation
-
-                                            </h3>
-
-                                            <div className="bg-gray-100 rounded-lg p-4 whitespace-pre-wrap">
-
-                                                {job.reason}
-
-                                            </div>
+                                            {job.reason}
 
                                         </div>
 
@@ -299,11 +397,23 @@ function JobMatches() {
 
                                                 onClick={() => applyJob(job)}
 
-                                                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                                                className="bg-blue-600 text-white px-6 py-2 rounded"
 
                                             >
 
-                                                Apply Now
+                                                Apply
+
+                                            </button>
+
+                                            <button
+
+                                                onClick={() => saveJob(job)}
+
+                                                className="bg-pink-600 text-white px-6 py-2 rounded"
+
+                                            >
+
+                                                ❤️ Save
 
                                             </button>
 

@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
 import toast from "react-hot-toast";
+import Layout from "../components/Layout";
 
 function Profile() {
 
-    const [user, setUser] = useState(null);
-
-    const [formData, setFormData] = useState({
+    const [user, setUser] = useState({
         name: "",
         email: "",
     });
 
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
+
         fetchProfile();
+
     }, []);
 
     const fetchProfile = async () => {
@@ -23,14 +26,23 @@ function Profile() {
 
             setUser(res.data.user);
 
-            setFormData({
-                name: res.data.user.name,
-                email: res.data.user.email,
-            });
+        }
 
-        } catch (error) {
+        catch (error) {
 
-            toast.error("Failed to load profile");
+            toast.error(
+
+                error.response?.data?.message ||
+
+                "Unable to Load Profile"
+
+            );
+
+        }
+
+        finally {
+
+            setLoading(false);
 
         }
 
@@ -38,121 +50,161 @@ function Profile() {
 
     const handleChange = (e) => {
 
-        setFormData({
-            ...formData,
+        setUser({
+
+            ...user,
+
             [e.target.name]: e.target.value,
+
         });
 
     };
 
-    const handleSubmit = async (e) => {
+    const updateProfile = async (e) => {
 
         e.preventDefault();
 
         try {
 
             const res = await API.put(
+
                 "/auth/update-profile",
-                formData
+
+                {
+
+                    name: user.name,
+
+                    email: user.email,
+
+                }
+
             );
 
-            setUser(res.data.user);
+            toast.success(
 
-            toast.success("Profile Updated");
+                res.data.message ||
 
-        } catch (error) {
+                "Profile Updated"
+
+            );
+
+        }
+
+        catch (error) {
 
             toast.error(
+
                 error.response?.data?.message ||
+
                 "Update Failed"
+
             );
 
         }
 
     };
 
-    const logout = () => {
-
-        localStorage.removeItem("token");
-
-        window.location.href = "/login";
-
-    };
-
-    if (!user) {
+    if (loading) {
 
         return (
-            <div className="flex justify-center items-center h-screen">
-                Loading...
-            </div>
+
+            <Layout>
+
+                <div className="flex justify-center items-center h-[70vh] text-2xl font-bold">
+
+                    Loading Profile...
+
+                </div>
+
+            </Layout>
+
         );
 
     }
 
     return (
 
-        <div className="min-h-screen bg-gray-100 flex justify-center items-center">
+        <Layout>
 
-            <div className="bg-white shadow-xl rounded-xl p-10 w-[550px]">
+            <div className="max-w-2xl mx-auto">
 
-                <div className="flex justify-center">
+                <div className="bg-white rounded-xl shadow-lg p-8">
 
-                    <div className="w-28 h-28 rounded-full bg-blue-500 text-white flex items-center justify-center text-4xl font-bold">
+                    <h1 className="text-4xl font-bold mb-8">
 
-                        {formData.name.charAt(0).toUpperCase()}
+                        My Profile
 
-                    </div>
+                    </h1>
+
+                    <form onSubmit={updateProfile}>
+
+                        <div className="mb-6">
+
+                            <label className="block mb-2 font-semibold">
+
+                                Full Name
+
+                            </label>
+
+                            <input
+
+                                type="text"
+
+                                name="name"
+
+                                value={user.name}
+
+                                onChange={handleChange}
+
+                                className="w-full border rounded-lg p-3"
+
+                            />
+
+                        </div>
+
+                        <div className="mb-6">
+
+                            <label className="block mb-2 font-semibold">
+
+                                Email
+
+                            </label>
+
+                            <input
+
+                                type="email"
+
+                                name="email"
+
+                                value={user.email}
+
+                                onChange={handleChange}
+
+                                className="w-full border rounded-lg p-3"
+
+                            />
+
+                        </div>
+
+                        <button
+
+                            type="submit"
+
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-lg"
+
+                        >
+
+                            Update Profile
+
+                        </button>
+
+                    </form>
 
                 </div>
 
-                <h1 className="text-3xl font-bold text-center mt-4">
-
-                    Edit Profile
-
-                </h1>
-
-                <form
-                    onSubmit={handleSubmit}
-                    className="mt-8 space-y-5"
-                >
-
-                    <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="w-full border rounded-lg p-3"
-                        placeholder="Name"
-                    />
-
-                    <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className="w-full border rounded-lg p-3"
-                        placeholder="Email"
-                    />
-
-                    <button
-                        type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg"
-                    >
-                        Save Changes
-                    </button>
-
-                </form>
-
-                <button
-                    onClick={logout}
-                    className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg"
-                >
-                    Logout
-                </button>
-
             </div>
 
-        </div>
+        </Layout>
 
     );
 

@@ -1,25 +1,46 @@
+import { Link, useNavigate } from "react-router-dom";
+
 function Navbar() {
-  return (
-    <nav className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto flex justify-between items-center p-5">
 
-        <h1 className="text-2xl font-bold text-blue-600">
-          AI Resume Matcher
-        </h1>
+    const navigate = useNavigate();
 
-        <div className="space-x-6">
-          <a href="#" className="hover:text-blue-600">Home</a>
-          <a href="#" className="hover:text-blue-600">Features</a>
-          <a href="#" className="hover:text-blue-600">About</a>
+    const logout = () => {
 
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            Login
-          </button>
+        localStorage.removeItem("token");
+
+        navigate("/");
+
+    };
+
+    return (
+
+        <div className="bg-blue-700 text-white h-16 flex justify-between items-center px-8 shadow">
+
+            <Link
+                to="/dashboard"
+                className="text-2xl font-bold"
+            >
+
+                AI Resume Matcher
+
+            </Link>
+
+            <button
+
+                onClick={logout}
+
+                className="bg-red-500 px-4 py-2 rounded-lg hover:bg-red-600"
+
+            >
+
+                Logout
+
+            </button>
+
         </div>
 
-      </div>
-    </nav>
-  );
+    );
+
 }
 
 export default Navbar;
