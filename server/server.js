@@ -5,7 +5,6 @@ const cors = require("cors");
 
 const connectDB = require("./config/db");
 
-// Routes
 const geminiRoutes = require("./routes/geminiRoutes");
 const apiRoutes = require("./routes/apiRoutes");
 const authRoutes = require("./routes/authRoutes");
@@ -13,6 +12,7 @@ const resumeRoutes = require("./routes/resumeRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
+const savedJobRoutes = require("./routes/savedJobRoutes");
 
 const app = express();
 
@@ -24,11 +24,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Static Folder
+app.use("/uploads", express.static("uploads"));
+
 // Home Route
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "AI Resume Matcher Backend is Running 🚀"
+        message: "🚀 AI Resume Matcher Backend is Running Successfully!"
     });
 });
 
@@ -36,16 +39,17 @@ app.get("/", (req, res) => {
 app.use("/api", apiRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/resume", resumeRoutes);
+app.use("/api/gemini", geminiRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/application", applicationRoutes);
-app.use("/api/gemini", geminiRoutes);
+app.use("/api/saved-jobs", savedJobRoutes);
 
-// Handle 404
+// 404 Route
 app.use((req, res) => {
     res.status(404).json({
         success: false,
-        message: "Route not found"
+        message: "Route Not Found"
     });
 });
 
