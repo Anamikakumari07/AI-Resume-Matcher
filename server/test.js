@@ -1,17 +1,16 @@
-const dns = require("node:dns").promises;
+const mongoose = require("mongoose");
 
-async function test() {
-    try {
-        console.log("Testing DNS...");
+const uri =
+  "mongodb+srv://anamika:Anamika123@cluster0.546bwip.mongodb.net/ai-resume-matcher?retryWrites=true&w=majority&appName=Cluster0";
 
-        const result = await dns.resolveSrv(
-            "_mongodb._tcp.cluster0.546bwip.mongodb.net"
-        );
-
-        console.log(result);
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-test();
+mongoose
+  .connect(uri)
+  .then(() => {
+    console.log("✅ MongoDB Connected Successfully");
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.log("❌ Error:");
+    console.log(err);
+    process.exit(1);
+  });
