@@ -113,8 +113,7 @@ function ResumeHistory() {
 
                                 <a
 
-                                    href={`http://localhost:5000/uploads/${resume.resumeUrl}`}
-
+                                    href={`https://ai-resume-matcher-1-7xds.onrender.com/uploads/${resume.resumeUrl}`}
                                     target="_blank"
 
                                     rel="noreferrer"
@@ -129,8 +128,7 @@ function ResumeHistory() {
 
                                 <a
 
-                                    href={`http://localhost:5000/uploads/${resume.resumeUrl}`}
-
+                                href={`https://ai-resume-matcher-1-7xds.onrender.com/uploads/${resume.resumeUrl}`}
                                     download
 
                                     className="bg-green-600 text-white px-5 py-2 rounded"

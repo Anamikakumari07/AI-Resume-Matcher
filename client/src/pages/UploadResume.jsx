@@ -1,64 +1,80 @@
-const Resume = require("../models/Resume");
+import { useState } from "react";
+import axios from "axios";
 
-const uploadResume = async (req, res) => {
+const UploadResume = () => {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const API_URL = "https://ai-resume-matcher-1-7xds.onrender.com";
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+
+    if (!file) {
+      alert("Please select a resume.");
+      return;
+    }
 
     try {
+      setLoading(true);
 
-        if (!req.file) {
+      const formData = new FormData();
+      formData.append("resume", file);
 
-            return res.status(400).json({
+      const token = localStorage.getItem("token");
 
-                success: false,
-
-                message: "No Resume Uploaded",
-
-            });
-
+      const res = await axios.post(
+        `${API_URL}/api/resume/upload`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        // Dummy ATS Score (replace later with AI score if needed)
-        const atsScore = Math.floor(Math.random() * 41) + 60;
-
-        const resume = await Resume.create({
-
-            user: req.user.id,
-
-            filename: req.file.originalname,
-
-            resumeUrl: req.file.filename,
-
-            atsScore,
-
-        });
-
-        res.status(201).json({
-
-            success: true,
-
-            message: "Resume Uploaded Successfully",
-
-            resume,
-
-        });
-
+      setMessage(res.data.message);
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Upload Failed");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    catch (error) {
+  return (
+    <div className="container mt-5">
+      <h2>Upload Resume</h2>
 
-        res.status(500).json({
+      <form onSubmit={handleUpload}>
+        <input
+          type="file"
+          className="form-control mb-3"
+          accept=".pdf,.doc,.docx"
+          onChange={handleFileChange}
+        />
 
-            success: false,
+        <button
+          className="btn btn-primary"
+          disabled={loading}
+          type="submit"
+        >
+          {loading ? "Uploading..." : "Upload Resume"}
+        </button>
+      </form>
 
-            message: error.message,
-
-        });
-
-    }
-
+      {message && (
+        <div className="alert alert-info mt-3">
+          {message}
+        </div>
+      )}
+    </div>
+  );
 };
 
-module.exports = {
-
-    uploadResume,
-
-};
+export default UploadResume;
