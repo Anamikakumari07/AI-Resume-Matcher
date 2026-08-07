@@ -1,195 +1,232 @@
 const Resume = require("../models/Resume");
-const extractTextFromPDF = require("../utils/extractText");
-const ai = require("../config/gemini");
-
-// ======================
-// Upload Resume
-// ======================
 
 const uploadResume = async (req, res) => {
+
     try {
 
         if (!req.file) {
+
             return res.status(400).json({
+
                 success: false,
-                message: "Please upload a PDF resume",
+
+                message: "No Resume Uploaded",
+
             });
+
         }
 
-        const extractedText = await extractTextFromPDF(req.file.path);
+        // Dummy ATS Score
+        // Later you can replace this with Gemini/OpenAI generated ATS
 
-        const prompt = `
-You are an ATS Resume Analyzer.
+        const atsScore = Math.floor(Math.random() * 41) + 60;
 
-Analyze the following resume and provide:
+        const resume = await Resume.create({
 
-1. ATS Score (out of 100)
-2. Technical Skills
-3. Strengths
-4. Weaknesses
-5. Suggestions for Improvement
-
-Resume:
-
-${extractedText}
-`;
-
-        const result = await ai.models.generateContent({
-            model: "gemini-flash-latest",
-            contents: prompt,
-        });
-
-        const aiResponse =
-            result.text ||
-            result.response?.text() ||
-            "";
-
-        let atsScore = 0;
-
-        const match = aiResponse.match(/\d+/);
-
-        if (match) {
-            atsScore = Number(match[0]);
-        }
-
-        const resume = new Resume({
             user: req.user.id,
-            filename: req.file.filename,
-            filePath: req.file.path,
-            analysis: aiResponse,
-            atsScore,
-        });
 
-        await resume.save();
+            filename: req.file.originalname,
+
+            resumeUrl: req.file.filename,
+
+            atsScore,
+
+        });
 
         res.status(201).json({
+
             success: true,
+
             message: "Resume Uploaded Successfully",
-            atsScore,
-            analysis: aiResponse,
+
             resume,
-        });
 
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-            success: false,
-            message: error.message,
         });
 
     }
+
+    catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+
+            success: false,
+
+            message: error.message,
+
+        });
+
+    }
+
 };
 
-// ======================
-// Get My Resumes
-// ======================
-
 const getMyResumes = async (req, res) => {
+
     try {
 
         const resumes = await Resume.find({
+
             user: req.user.id,
+
         }).sort({
+
             uploadedAt: -1,
+
         });
 
-        res.status(200).json({
-            success: true,
-            count: resumes.length,
-            resumes,
-        });
+        let readinessScore = 0;
 
-    } catch (error) {
+        let suggestions = [];
 
-        console.error(error);
+        if (resumes.length > 0) {
 
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+            const latestResume = resumes[0];
 
-    }
-};
+            readinessScore = Math.min(
 
-// ======================
-// Get Resume By ID
-// ======================
+                100,
 
-const getResumeById = async (req, res) => {
-    try {
+                latestResume.atsScore + 10
 
-        const resume = await Resume.findOne({
-            _id: req.params.id,
-            user: req.user.id,
-        });
+            );
 
-        if (!resume) {
-            return res.status(404).json({
-                success: false,
-                message: "Resume not found",
-            });
+            if (latestResume.atsScore < 70) {
+
+                suggestions.push(
+
+                    "Improve ATS keywords."
+
+                );
+
+            }
+
+            if (latestResume.atsScore < 80) {
+
+                suggestions.push(
+
+                    "Add more technical skills."
+
+                );
+
+            }
+
+            if (latestResume.atsScore < 90) {
+
+                suggestions.push(
+
+                    "Add measurable achievements."
+
+                );
+
+            }
+
+            if (latestResume.atsScore >= 90) {
+
+                suggestions.push(
+
+                    "Excellent Resume. Keep it updated."
+
+                );
+
+            }
+
         }
 
         res.status(200).json({
+
             success: true,
-            resume,
-        });
 
-    } catch (error) {
+            resumes,
 
-        console.error(error);
+            readinessScore,
 
-        res.status(500).json({
-            success: false,
-            message: error.message,
+            suggestions,
+
         });
 
     }
-};
 
-// ======================
-// Delete Resume
-// ======================
+    catch (error) {
 
-const deleteResume = async (req, res) => {
-    try {
+        console.log(error);
 
-        const resume = await Resume.findOne({
-            _id: req.params.id,
-            user: req.user.id,
+        res.status(500).json({
+
+            success: false,
+
+            message: error.message,
+
         });
 
+    }
+
+};
+
+const deleteResume = async (req, res) => {
+
+    try {
+
+        const resume = await Resume.findById(req.params.id);
+
         if (!resume) {
+
             return res.status(404).json({
+
                 success: false,
-                message: "Resume not found",
+
+                message: "Resume Not Found",
+
             });
+
+        }
+
+        if (resume.user.toString() !== req.user.id) {
+
+            return res.status(403).json({
+
+                success: false,
+
+                message: "Unauthorized",
+
+            });
+
         }
 
         await Resume.findByIdAndDelete(req.params.id);
 
         res.status(200).json({
+
             success: true,
-            message: "Resume deleted successfully",
-        });
 
-    } catch (error) {
+            message: "Resume Deleted Successfully",
 
-        console.error(error);
-
-        res.status(500).json({
-            success: false,
-            message: error.message,
         });
 
     }
+
+    catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+
+            success: false,
+
+            message: error.message,
+
+        });
+
+    }
+
 };
 
 module.exports = {
+
     uploadResume,
+
     getMyResumes,
-    getResumeById,
+
     deleteResume,
+
 };

@@ -10,6 +10,9 @@ import SavedJobs from "./pages/SavedJobs";
 import MyApplications from "./pages/MyApplications";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import NotFound from "./pages/NotFound";
+
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
 
@@ -17,99 +20,89 @@ function App() {
 
         <Routes>
 
-            {/* Authentication */}
+            {/* Public Routes */}
+
+            <Route path="/" element={<Login />} />
+
+            <Route path="/register" element={<Register />} />
+
+            {/* Protected Routes */}
 
             <Route
-
-                path="/"
-
-                element={<Login />}
-
-            />
-
-            <Route
-
-                path="/register"
-
-                element={<Register />}
-
-            />
-
-            {/* Dashboard */}
-
-            <Route
-
                 path="/dashboard"
-
-                element={<Dashboard />}
-
+                element={
+                    <ProtectedRoute>
+                        <Dashboard />
+                    </ProtectedRoute>
+                }
             />
 
-            {/* Resume */}
-
             <Route
-
                 path="/upload"
-
-                element={<UploadResume />}
-
+                element={
+                    <ProtectedRoute>
+                        <UploadResume />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
-
                 path="/history"
-
-                element={<ResumeHistory />}
-
+                element={
+                    <ProtectedRoute>
+                        <ResumeHistory />
+                    </ProtectedRoute>
+                }
             />
 
-            {/* AI Jobs */}
-
             <Route
-
                 path="/jobs"
-
-                element={<JobMatches />}
-
+                element={
+                    <ProtectedRoute>
+                        <JobMatches />
+                    </ProtectedRoute>
+                }
             />
 
             <Route
-
                 path="/saved-jobs"
-
-                element={<SavedJobs />}
-
+                element={
+                    <ProtectedRoute>
+                        <SavedJobs />
+                    </ProtectedRoute>
+                }
             />
 
-            {/* Applications */}
-
             <Route
-
                 path="/applications"
-
-                element={<MyApplications />}
-
+                element={
+                    <ProtectedRoute>
+                        <MyApplications />
+                    </ProtectedRoute>
+                }
             />
 
-            {/* Profile */}
-
             <Route
-
                 path="/profile"
-
-                element={<Profile />}
-
+                element={
+                    <ProtectedRoute>
+                        <Profile />
+                    </ProtectedRoute>
+                }
             />
-
-            {/* Admin */}
 
             <Route
-
                 path="/admin"
-
-                element={<AdminDashboard />}
-
+                element={
+                    <ProtectedRoute>
+                        <AdminDashboard />
+                    </ProtectedRoute>
+                }
             />
+
+            {/* 404 Page */}
+
+            <Route path="*" element={<NotFound />} />
 
         </Routes>
 

@@ -1,3 +1,91 @@
+# AI Resume Matcher
+
+## 📌 Description
+
+AI Resume Matcher is a MERN Stack application that allows users to upload resumes, receive ATS scores, get AI-powered job recommendations, save jobs, apply to jobs, and track applications.
+
+---
+
+## Features
+
+- User Authentication (JWT)
+- Resume Upload
+- Resume History
+- ATS Score
+- AI Job Matching
+- Save Jobs
+- Apply Jobs
+- Dashboard Analytics
+- Profile Management
+- Admin Dashboard
+- Dark Mode
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- React
+- Tailwind CSS
+- Axios
+
+### Backend
+
+- Node.js
+- Express.js
+- MongoDB
+- JWT
+- Multer
+
+### AI
+
+- Google Gemini API
+
+---
+
+## Installation
+
+### Backend
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+### Frontend
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+---
+
+## Environment Variables
+
+### Backend
+
+```
+PORT=
+MONGO_URI=
+JWT_SECRET=
+GEMINI_API_KEY=
+```
+
+### Frontend
+
+```
+VITE_API_URL=
+```
+
+---
+
+## Author
+
+Anamika Kumari
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

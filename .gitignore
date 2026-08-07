@@ -11,3 +11,14 @@ server/uploads/
 
 # Logs
 *.log
+node_modules
+
+.env
+
+client/node_modules
+
+server/node_modules
+
+dist
+
+coverage

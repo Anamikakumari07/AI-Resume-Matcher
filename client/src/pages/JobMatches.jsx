@@ -2,29 +2,19 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import toast from "react-hot-toast";
+import Layout from "../components/Layout";
+import SkeletonCard from "../components/SkeletonCard";
 
 function JobMatches() {
 
     const [jobs, setJobs] = useState([]);
-    const [filteredJobs, setFilteredJobs] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("All");
 
     const navigate = useNavigate();
 
     useEffect(() => {
-
         fetchJobs();
-
     }, []);
-
-    useEffect(() => {
-
-        filterJobs();
-
-    }, [search, filter, jobs]);
 
     const fetchJobs = async () => {
 
@@ -32,74 +22,22 @@ function JobMatches() {
 
             const res = await API.get("/jobs/match");
 
-            setJobs(res.data.bestMatches);
+            setJobs(res.data.bestMatches || []);
 
-            setFilteredJobs(res.data.bestMatches);
+        } catch (error) {
 
-        }
-
-        catch (error) {
+            console.log(error);
 
             toast.error(
                 error.response?.data?.message ||
-                "Unable to load jobs"
+                "Unable to load job matches"
             );
 
-        }
-
-        finally {
+        } finally {
 
             setLoading(false);
 
         }
-
-    };
-
-    const filterJobs = () => {
-
-        let data = [...jobs];
-
-        if (search !== "") {
-
-            data = data.filter((job) =>
-                job.title.toLowerCase().includes(search.toLowerCase()) ||
-                job.company.toLowerCase().includes(search.toLowerCase())
-            );
-
-        }
-
-        if (filter === "80+") {
-
-            data = data.filter((job) => job.matchPercentage >= 80);
-
-        }
-
-        if (filter === "60+") {
-
-            data = data.filter(
-
-                (job) =>
-
-                    job.matchPercentage >= 60 &&
-                    job.matchPercentage < 80
-
-            );
-
-        }
-
-        if (filter === "Below60") {
-
-            data = data.filter(
-
-                (job) =>
-
-                    job.matchPercentage < 60
-
-            );
-
-        }
-
-        setFilteredJobs(data);
 
     };
 
@@ -117,11 +55,11 @@ function JobMatches() {
 
                 salary: job.salary || "Not Disclosed",
 
-                jobType: "Full Time",
+                jobType: job.jobType || "Full Time",
 
             });
 
-            toast.success("Application Submitted");
+            toast.success("Application Submitted Successfully");
 
             navigate("/applications");
 
@@ -145,21 +83,9 @@ function JobMatches() {
 
         try {
 
-            await API.post("/saved-jobs/save", {
+            await API.post("/saved-jobs", job);
 
-                company: job.company,
-
-                title: job.title,
-
-                location: job.location,
-
-                matchPercentage: job.matchPercentage,
-
-                reason: job.reason,
-
-            });
-
-            toast.success("Job Saved");
+            toast.success("Job Saved Successfully");
 
         }
 
@@ -169,7 +95,7 @@ function JobMatches() {
 
                 error.response?.data?.message ||
 
-                "Unable to Save"
+                "Unable to Save Job"
 
             );
 
@@ -181,11 +107,18 @@ function JobMatches() {
 
         return (
 
-            <div className="flex justify-center items-center h-screen text-2xl font-bold">
+            <Layout>
 
-                Loading AI Job Matches...
+                <div className="grid md:grid-cols-2 gap-6">
 
-            </div>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+
+                </div>
+
+            </Layout>
 
         );
 
@@ -193,245 +126,251 @@ function JobMatches() {
 
     return (
 
-        <div className="min-h-screen bg-gray-100 p-8">
+        <Layout>
 
-            <div className="flex justify-between items-center mb-8">
+            <div>
 
-                <h1 className="text-4xl font-bold">
+                <h1 className="text-4xl font-bold mb-8 dark:text-white">
 
                     AI Job Matches
 
                 </h1>
 
-                <button
+                {
 
-                    onClick={() => navigate("/saved-jobs")}
+                    jobs.length > 0 && (
 
-                    className="bg-purple-600 text-white px-5 py-2 rounded"
+                        <div className="grid md:grid-cols-3 gap-6 mb-8">
 
-                >
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition duration-300 hover:scale-105 hover:shadow-2xl">
 
-                    Saved Jobs
+                                <h2 className="text-gray-500 dark:text-gray-300">
 
-                </button>
+                                    Total Matches
 
-            </div>
+                                </h2>
 
-            <div className="grid md:grid-cols-2 gap-5 mb-8">
+                                <p className="text-4xl font-bold mt-3 dark:text-white">
 
-                <input
+                                    {jobs.length}
 
-                    type="text"
+                                </p>
 
-                    placeholder="Search Company or Job"
+                            </div>
 
-                    value={search}
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition duration-300 hover:scale-105 hover:shadow-2xl">
 
-                    onChange={(e) => setSearch(e.target.value)}
+                                <h2 className="text-gray-500 dark:text-gray-300">
 
-                    className="border p-3 rounded-lg"
+                                    Best Match
 
-                />
+                                </h2>
 
-                <select
+                                <p className="text-4xl font-bold text-green-600 mt-3">
 
-                    value={filter}
+                                    {jobs[0].matchPercentage}%
 
-                    onChange={(e) => setFilter(e.target.value)}
+                                </p>
 
-                    className="border p-3 rounded-lg"
+                            </div>
 
-                >
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition duration-300 hover:scale-105 hover:shadow-2xl">
 
-                    <option value="All">
+                                <h2 className="text-gray-500 dark:text-gray-300">
 
-                        All Matches
+                                    Top Company
 
-                    </option>
+                                </h2>
 
-                    <option value="80+">
+                                <p className="text-2xl font-bold mt-3 dark:text-white">
 
-                        80%+
+                                    {jobs[0].company}
 
-                    </option>
+                                </p>
 
-                    <option value="60+">
-
-                        60-79%
-
-                    </option>
-
-                    <option value="Below60">
-
-                        Below 60%
-
-                    </option>
-
-                </select>
-
-            </div>
-
-            {
-
-                filteredJobs.length === 0 ?
-
-                    (
-
-                        <div className="bg-white rounded-xl shadow-lg p-8">
-
-                            No Matching Jobs
+                            </div>
 
                         </div>
 
                     )
 
-                    :
+                }
 
-                    (
+                {
 
-                        <div className="space-y-6">
+                    jobs.length === 0 ?
 
-                            {
+                        (
 
-                                filteredJobs.map((job, index) => (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
 
-                                    <div
+                                <h2 className="text-2xl font-bold dark:text-white">
 
-                                        key={index}
+                                    No Matching Jobs Found
 
-                                        className="bg-white rounded-xl shadow-lg p-6"
+                                </h2>
 
-                                    >
+                            </div>
 
-                                        <div className="flex justify-between">
+                        )
 
-                                            <div>
+                        :
 
-                                                <h2 className="text-2xl font-bold">
+                        (
 
-                                                    {job.title}
+                            <div className="space-y-6">
 
-                                                </h2>
+                                {
 
-                                                <p>
+                                    jobs.map((job, index) => (
 
-                                                    {job.company}
+                                        <div
 
-                                                </p>
+                                            key={index}
 
-                                                <p>
+                                            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition duration-300 hover:scale-105 hover:shadow-2xl"
 
-                                                    {job.location}
+                                        >
 
-                                                </p>
+                                            <div className="flex justify-between items-start">
+
+                                                <div>
+
+                                                    <h2 className="text-2xl font-bold dark:text-white">
+
+                                                        {job.title}
+
+                                                    </h2>
+
+                                                    <p className="text-gray-500 mt-2">
+
+                                                        {job.company}
+
+                                                    </p>
+
+                                                    <p className="text-gray-500">
+
+                                                        {job.location}
+
+                                                    </p>
+
+                                                </div>
+
+                                                {
+
+                                                    index === 0 && (
+
+                                                        <span className="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold">
+
+                                                            🏆 Best Match
+
+                                                        </span>
+
+                                                    )
+
+                                                }
 
                                             </div>
 
-                                            {
+                                            <div className="mt-6">
 
-                                                index === 0 && (
+                                                <div className="flex justify-between mb-2">
 
-                                                    <span className="bg-yellow-400 px-4 py-2 rounded-full">
+                                                    <span className="font-medium dark:text-white">
 
-                                                        🏆 Best Match
+                                                        Match Percentage
 
                                                     </span>
 
-                                                )
+                                                    <span className="font-bold dark:text-white">
 
-                                            }
+                                                        {job.matchPercentage}%
 
-                                        </div>
+                                                    </span>
 
-                                        <div className="mt-5">
+                                                </div>
 
-                                            <p>
+                                                <div className="w-full bg-gray-200 rounded-full h-4">
 
-                                                Match :
+                                                    <div
 
-                                                <strong>
+                                                        className={`h-4 rounded-full ${
+                                                            job.matchPercentage >= 80
+                                                                ? "bg-green-500"
+                                                                : job.matchPercentage >= 60
+                                                                ? "bg-yellow-500"
+                                                                : "bg-red-500"
+                                                        }`}
 
-                                                    {" "}
+                                                        style={{
+                                                            width: `${job.matchPercentage}%`,
+                                                        }}
 
-                                                    {job.matchPercentage}%
+                                                    ></div>
 
-                                                </strong>
+                                                </div>
 
-                                            </p>
+                                            </div>
 
-                                            <div className="w-full bg-gray-200 h-3 rounded mt-2">
+                                            <div className="mt-6">
 
-                                                <div
+                                                <h3 className="text-lg font-bold mb-3 dark:text-white">
 
-                                                    className={`h-3 rounded ${
-                                                        job.matchPercentage >= 80
-                                                            ? "bg-green-500"
-                                                            : job.matchPercentage >= 60
-                                                            ? "bg-yellow-500"
-                                                            : "bg-red-500"
-                                                    }`}
+                                                    AI Recommendation
 
-                                                    style={{
+                                                </h3>
 
-                                                        width:
+                                                <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 whitespace-pre-wrap dark:text-white">
 
-                                                            `${job.matchPercentage}%`
+                                                    {job.reason}
 
-                                                    }}
+                                                </div>
 
-                                                ></div>
+                                            </div>
+
+                                            <div className="mt-6 flex gap-4">
+
+                                                <button
+
+                                                    onClick={() => applyJob(job)}
+
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+
+                                                >
+
+                                                    Apply Now
+
+                                                </button>
+
+                                                <button
+
+                                                    onClick={() => saveJob(job)}
+
+                                                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
+
+                                                >
+
+                                                    Save Job
+
+                                                </button>
 
                                             </div>
 
                                         </div>
 
-                                        <div className="mt-5 bg-gray-100 p-4 rounded">
+                                    ))
 
-                                            {job.reason}
+                                }
 
-                                        </div>
+                            </div>
 
-                                        <div className="mt-6 flex gap-4">
+                        )
 
-                                            <button
+                }
 
-                                                onClick={() => applyJob(job)}
+            </div>
 
-                                                className="bg-blue-600 text-white px-6 py-2 rounded"
-
-                                            >
-
-                                                Apply
-
-                                            </button>
-
-                                            <button
-
-                                                onClick={() => saveJob(job)}
-
-                                                className="bg-pink-600 text-white px-6 py-2 rounded"
-
-                                            >
-
-                                                ❤️ Save
-
-                                            </button>
-
-                                        </div>
-
-                                    </div>
-
-                                ))
-
-                            }
-
-                        </div>
-
-                    )
-
-            }
-
-        </div>
+        </Layout>
 
     );
 
