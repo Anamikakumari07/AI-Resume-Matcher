@@ -10,6 +10,7 @@ const UploadResume = () => {
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
+    setMessage("");
   };
 
   const handleUpload = async (e) => {
@@ -22,26 +23,37 @@ const UploadResume = () => {
 
     try {
       setLoading(true);
+      setMessage("");
 
       const formData = new FormData();
+
+      // MUST be "resume" because backend uses upload.single("resume")
       formData.append("resume", file);
 
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        setMessage("Please login again.");
+        return;
+      }
 
       const res = await axios.post(
         `${API_URL}/api/resume/upload`,
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
           },
         }
       );
 
-      setMessage(res.data.message);
+      setMessage(res.data.message || "Resume uploaded successfully!");
     } catch (err) {
-      setMessage(err.response?.data?.message || "Upload Failed");
+      console.error("Upload Error:", err);
+
+      setMessage(
+        err.response?.data?.message || "Resume upload failed."
+      );
     } finally {
       setLoading(false);
     }
