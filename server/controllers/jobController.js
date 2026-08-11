@@ -131,7 +131,7 @@ const matchJobs = async (req, res) => {
 You are an ATS Resume Matcher.
 
 Resume Analysis:
-${resume.analysis}
+${JSON.stringify(resume.parsedData)}
 
 Job Title:
 ${job.title}

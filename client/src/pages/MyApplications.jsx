@@ -18,8 +18,7 @@ function MyApplications() {
 
         try {
 
-            const res = await API.get("/application/my");
-
+const res = await API.get("/application/my-applications");
             setApplications(res.data.applications);
 
         }

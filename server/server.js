@@ -13,7 +13,7 @@ const jobRoutes = require("./routes/jobRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const savedJobRoutes = require("./routes/savedJobRoutes");
-
+const jobMatchRoutes = require("./routes/jobMatchRoutes");
 const app = express();
 
 // Connect Database
@@ -44,7 +44,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/application", applicationRoutes);
 app.use("/api/saved-jobs", savedJobRoutes);
-
+app.use("/api/job-match", jobMatchRoutes);
 // 404 Route
 app.use((req, res) => {
     res.status(404).json({
