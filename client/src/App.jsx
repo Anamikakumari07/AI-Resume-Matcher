@@ -6,12 +6,12 @@ import Dashboard from "./pages/Dashboard";
 import UploadResume from "./pages/UploadResume";
 import ResumeHistory from "./pages/ResumeHistory";
 import JobMatches from "./pages/JobMatches";
+import JobDetails from "./pages/JobDetails";
 import SavedJobs from "./pages/SavedJobs";
 import MyApplications from "./pages/MyApplications";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
-
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -20,13 +20,26 @@ function App() {
 
         <Routes>
 
-            {/* Public Routes */}
+            {/* =========================================
+                PUBLIC ROUTES
+            ========================================= */}
 
-            <Route path="/" element={<Login />} />
+            <Route
+                path="/"
+                element={<Login />}
+            />
 
-            <Route path="/register" element={<Register />} />
+            <Route
+                path="/register"
+                element={<Register />}
+            />
 
-            {/* Protected Routes */}
+
+            {/* =========================================
+                PROTECTED ROUTES
+            ========================================= */}
+
+            {/* Dashboard */}
 
             <Route
                 path="/dashboard"
@@ -37,6 +50,9 @@ function App() {
                 }
             />
 
+
+            {/* Upload Resume */}
+
             <Route
                 path="/upload"
                 element={
@@ -45,6 +61,9 @@ function App() {
                     </ProtectedRoute>
                 }
             />
+
+
+            {/* Resume History */}
 
             <Route
                 path="/history"
@@ -55,6 +74,9 @@ function App() {
                 }
             />
 
+
+            {/* Job Matches */}
+
             <Route
                 path="/jobs"
                 element={
@@ -63,6 +85,21 @@ function App() {
                     </ProtectedRoute>
                 }
             />
+
+
+            {/* Job Details */}
+
+            <Route
+                path="/jobs/:id"
+                element={
+                    <ProtectedRoute>
+                        <JobDetails />
+                    </ProtectedRoute>
+                }
+            />
+
+
+            {/* Saved Jobs */}
 
             <Route
                 path="/saved-jobs"
@@ -73,6 +110,9 @@ function App() {
                 }
             />
 
+
+            {/* Applications */}
+
             <Route
                 path="/applications"
                 element={
@@ -81,6 +121,9 @@ function App() {
                     </ProtectedRoute>
                 }
             />
+
+
+            {/* Profile */}
 
             <Route
                 path="/profile"
@@ -91,18 +134,27 @@ function App() {
                 }
             />
 
+
+            {/* Admin Dashboard */}
+
             <Route
-                path="/admin"
-                element={
-                    <ProtectedRoute>
-                        <AdminDashboard />
-                    </ProtectedRoute>
-                }
+    path="/admin"
+    element={
+        <ProtectedRoute adminOnly={true}>
+            <AdminDashboard />
+        </ProtectedRoute>
+    }
+/>
+
+
+            {/* =========================================
+                404
+            ========================================= */}
+
+            <Route
+                path="*"
+                element={<NotFound />}
             />
-
-            {/* 404 Page */}
-
-            <Route path="*" element={<NotFound />} />
 
         </Routes>
 

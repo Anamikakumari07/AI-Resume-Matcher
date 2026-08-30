@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import toast from "react-hot-toast";
 import Layout from "../components/Layout";
 
 function SavedJobs() {
 
-    const [jobs, setJobs] = useState([]);
+    const [savedJobs, setSavedJobs] = useState([]);
+
     const [loading, setLoading] = useState(true);
 
-    const navigate = useNavigate();
+    const [error, setError] = useState("");
+
+    const [deletingJob, setDeletingJob] = useState(null);
+
+
+    // =====================================================
+    // FETCH SAVED JOBS
+    // =====================================================
 
     useEffect(() => {
 
@@ -17,31 +24,51 @@ function SavedJobs() {
 
     }, []);
 
+
     const fetchSavedJobs = async () => {
 
         try {
 
-            const res = await API.get("/saved-jobs");
+            setLoading(true);
 
-            setJobs(res.data.jobs);
+            setError("");
 
-        }
 
-        catch (error) {
-
-            console.log(error);
-
-            toast.error(
-
-                error.response?.data?.message ||
-
-                "Unable to Load Saved Jobs"
-
+            const res = await API.get(
+                "/saved-jobs"
             );
 
-        }
 
-        finally {
+            console.log(
+                "Saved Jobs:",
+                res.data
+            );
+
+
+            setSavedJobs(
+                res.data.savedJobs || []
+            );
+
+
+        } catch (error) {
+
+            console.log(
+                "Fetch Saved Jobs Error:",
+                error
+            );
+
+
+            const message =
+                error.response?.data?.message ||
+                "Unable to load saved jobs.";
+
+
+            setError(message);
+
+            toast.error(message);
+
+
+        } finally {
 
             setLoading(false);
 
@@ -49,69 +76,89 @@ function SavedJobs() {
 
     };
 
-    const removeJob = async (id) => {
+
+    // =====================================================
+    // DELETE SAVED JOB
+    // =====================================================
+
+    const deleteJob = async (id) => {
 
         try {
 
-            await API.delete(`/saved-jobs/${id}`);
+            setDeletingJob(id);
 
-            toast.success("Job Removed");
 
-            fetchSavedJobs();
-
-        }
-
-        catch (error) {
-
-            toast.error(
-
-                error.response?.data?.message ||
-
-                "Unable to Remove"
-
+            await API.delete(
+                `/saved-jobs/${id}`
             );
+
+
+            setSavedJobs(
+                (previousJobs) =>
+                    previousJobs.filter(
+                        (job) => job._id !== id
+                    )
+            );
+
+
+            toast.success(
+                "Job removed from saved jobs."
+            );
+
+
+        } catch (error) {
+
+            console.log(
+                "Delete Saved Job Error:",
+                error
+            );
+
+
+            const message =
+                error.response?.data?.message ||
+                "Unable to delete saved job.";
+
+
+            toast.error(message);
+
+
+        } finally {
+
+            setDeletingJob(null);
 
         }
 
     };
 
-    const applyJob = async (job) => {
 
-        try {
+    // =====================================================
+    // FORMAT DATE
+    // =====================================================
 
-            await API.post("/application/apply", {
+    const formatDate = (date) => {
 
-                company: job.company,
+        if (!date) {
 
-                position: job.title,
-
-                location: job.location,
-
-                salary: job.salary || "Not Disclosed",
-
-                jobType: "Full Time",
-
-            });
-
-            toast.success("Application Submitted");
-
-            navigate("/applications");
+            return "Recently";
 
         }
 
-        catch (error) {
 
-            toast.error(
-
-                error.response?.data?.message ||
-
-                "Unable to Apply"
-
-            );
-
-        }
+        return new Date(date).toLocaleDateString(
+            "en-IN",
+            {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+            }
+        );
 
     };
+
+
+    // =====================================================
+    // LOADING
+    // =====================================================
 
     if (loading) {
 
@@ -119,9 +166,19 @@ function SavedJobs() {
 
             <Layout>
 
-                <div className="flex justify-center items-center h-[70vh] text-2xl font-bold">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
 
-                    Loading Saved Jobs...
+                    <div className="text-4xl mb-4">
+                        📌
+                    </div>
+
+                    <h2 className="text-xl font-semibold text-gray-700">
+                        Loading saved jobs...
+                    </h2>
+
+                    <p className="text-gray-500 mt-2">
+                        Please wait while we fetch your saved jobs.
+                    </p>
 
                 </div>
 
@@ -131,159 +188,298 @@ function SavedJobs() {
 
     }
 
+
+    // =====================================================
+    // ERROR
+    // =====================================================
+
+    if (error) {
+
+        return (
+
+            <Layout>
+
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+
+                    <div className="flex items-start gap-4">
+
+                        <div className="text-3xl">
+                            ⚠️
+                        </div>
+
+
+                        <div>
+
+                            <h2 className="text-lg font-semibold text-red-700">
+                                Unable to load saved jobs
+                            </h2>
+
+
+                            <p className="text-red-600 mt-1">
+                                {error}
+                            </p>
+
+
+                            <button
+                                onClick={fetchSavedJobs}
+                                className="mt-4 px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                            >
+                                Try Again
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </Layout>
+
+        );
+
+    }
+
+
     return (
 
         <Layout>
 
-            <div>
+            {/* =================================================
+                HEADER
+            ================================================= */}
 
-                <div className="flex justify-between items-center mb-8">
+            <div className="mb-8">
 
-                    <h1 className="text-4xl font-bold">
+                <h1 className="text-4xl font-bold text-gray-800">
+                    Saved Jobs
+                </h1>
 
-                        Saved Jobs
 
-                    </h1>
+                <p className="text-gray-500 mt-2">
+                    Keep track of the jobs you are interested in.
+                </p>
 
-                    <span className="bg-purple-600 text-white px-5 py-2 rounded-lg">
+            </div>
 
-                        {jobs.length} Saved
 
-                    </span>
+            {/* =================================================
+                SAVED JOB COUNT
+            ================================================= */}
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+
+                <div className="flex items-center justify-between">
+
+                    <div>
+
+                        <p className="text-sm text-gray-500">
+                            Total Saved Jobs
+                        </p>
+
+
+                        <p className="text-3xl font-bold text-gray-800 mt-1">
+                            {savedJobs.length}
+                        </p>
+
+                    </div>
+
+
+                    <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">
+                        🔖
+                    </div>
 
                 </div>
 
-                {
+            </div>
 
-                    jobs.length === 0 ?
 
-                    (
+            {/* =================================================
+                EMPTY STATE
+            ================================================= */}
 
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            {savedJobs.length === 0 ? (
 
-                            <h2 className="text-2xl font-bold">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
 
-                                No Saved Jobs
+                    <div className="text-6xl mb-5">
+                        🔖
+                    </div>
 
-                            </h2>
 
-                            <p className="text-gray-500 mt-3">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                        No Saved Jobs
+                    </h2>
 
-                                Save jobs from AI Job Matches.
 
-                            </p>
+                    <p className="text-gray-500 mt-2 max-w-md mx-auto">
+                        You haven't saved any jobs yet.
+                        Go to Job Matches and save jobs
+                        you're interested in.
+                    </p>
 
-                        </div>
+                </div>
 
-                    )
+            ) : (
 
-                    :
+                /* =================================================
+                   SAVED JOB LIST
+                ================================================= */
 
-                    (
+                <div className="space-y-5">
 
-                        <div className="space-y-6">
+                    {savedJobs.map((job) => (
 
-                            {
+                        <div
+                            key={job._id}
+                            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition"
+                        >
 
-                                jobs.map((job) => (
+                            {/* =================================================
+                                JOB INFORMATION
+                            ================================================= */}
 
-                                    <div
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
 
-                                        key={job._id}
+                                <div>
 
-                                        className="bg-white rounded-xl shadow-lg p-6"
+                                    <h2 className="text-2xl font-bold text-gray-800">
+                                        {job.title}
+                                    </h2>
 
-                                    >
 
-                                        <div className="flex justify-between items-start">
+                                    <p className="text-blue-600 font-medium mt-1">
+                                        {job.company}
+                                    </p>
 
-                                            <div>
 
-                                                <h2 className="text-2xl font-bold">
+                                    {job.location && (
 
-                                                    {job.title}
+                                        <p className="text-gray-500 mt-1">
+                                            📍 {job.location}
+                                        </p>
 
-                                                </h2>
+                                    )}
 
-                                                <p className="text-gray-500 mt-2">
+                                </div>
 
-                                                    {job.company}
 
-                                                </p>
+                                {/* =================================================
+                                    SAVED DATE
+                                ================================================= */}
 
-                                                <p className="text-gray-500">
+                                <div className="text-sm text-gray-400">
 
-                                                    {job.location}
+                                    Saved on{" "}
 
-                                                </p>
+                                    {formatDate(
+                                        job.createdAt
+                                    )}
 
-                                            </div>
+                                </div>
 
-                                            <span className="bg-green-600 text-white px-4 py-2 rounded-full">
+                            </div>
 
-                                                {job.matchPercentage}%
 
-                                            </span>
+                            {/* =================================================
+                                DESCRIPTION
+                            ================================================= */}
 
-                                        </div>
+                            {job.description && (
 
-                                        <div className="mt-6">
+                                <div className="mt-5">
 
-                                            <h3 className="font-bold mb-2">
+                                    <p className="text-gray-600 leading-relaxed">
+                                        {job.description}
+                                    </p>
 
-                                                AI Recommendation
+                                </div>
 
-                                            </h3>
+                            )}
 
-                                            <div className="bg-gray-100 rounded-lg p-4">
 
-                                                {job.reason}
+                            {/* =================================================
+                                SKILLS
+                            ================================================= */}
 
-                                            </div>
+                            {job.skills &&
+                                job.skills.length > 0 && (
 
-                                        </div>
+                                    <div className="mt-5">
 
-                                        <div className="mt-6 flex gap-4">
+                                        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                                            Required Skills
+                                        </h3>
 
-                                            <button
 
-                                                onClick={() => applyJob(job)}
+                                        <div className="flex flex-wrap gap-2">
 
-                                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
+                                            {job.skills.map(
+                                                (skill, index) => (
 
-                                            >
+                                                    <span
+                                                        key={index}
+                                                        className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm"
+                                                    >
+                                                        {skill}
+                                                    </span>
 
-                                                Apply
-
-                                            </button>
-
-                                            <button
-
-                                                onClick={() => removeJob(job._id)}
-
-                                                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
-
-                                            >
-
-                                                Remove
-
-                                            </button>
+                                                )
+                                            )}
 
                                         </div>
 
                                     </div>
 
-                                ))
+                                )}
 
-                            }
+
+                            {/* =================================================
+                                ACTIONS
+                            ================================================= */}
+
+                            <div className="flex flex-wrap gap-3 mt-6">
+
+                                <button
+                                    onClick={() =>
+                                        toast.success(
+                                            "Job details feature coming soon."
+                                        )
+                                    }
+                                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                >
+                                    View Job
+                                </button>
+
+
+                                <button
+                                    onClick={() =>
+                                        deleteJob(job._id)
+                                    }
+                                    disabled={
+                                        deletingJob === job._id
+                                    }
+                                    className={`px-5 py-2.5 rounded-lg transition ${
+                                        deletingJob === job._id
+                                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                            : "border border-red-200 text-red-600 hover:bg-red-50"
+                                    }`}
+                                >
+
+                                    {deletingJob === job._id
+                                        ? "Removing..."
+                                        : "🗑️ Remove"}
+
+                                </button>
+
+                            </div>
 
                         </div>
 
-                    )
+                    ))}
 
-                }
+                </div>
 
-            </div>
+            )}
 
         </Layout>
 

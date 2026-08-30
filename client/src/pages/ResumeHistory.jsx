@@ -100,11 +100,10 @@ function ResumeHistory() {
                                 {
 
                                     new Date(
-
-                                        resume.uploadedAt
-
-                                    ).toLocaleString()
-
+    resume.createdAt
+).toLocaleString(
+    "en-IN"
+)
                                 }
 
                             </p>

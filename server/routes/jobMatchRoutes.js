@@ -8,10 +8,21 @@ const {
     matchResumeWithJob,
 } = require("../controllers/jobMatchController");
 
+
+// =====================================================
+// MATCH RESUME WITH JOBS
+// POST /api/job-match/match
+// =====================================================
+
 router.post(
     "/match",
     authMiddleware,
     matchResumeWithJob
 );
+
+
+// =====================================================
+// EXPORT
+// =====================================================
 
 module.exports = router;

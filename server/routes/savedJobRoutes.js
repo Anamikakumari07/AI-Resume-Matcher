@@ -2,46 +2,58 @@ const express = require("express");
 
 const router = express.Router();
 
-const authMiddleware = require("../middleware/authMiddleware");
-
 const {
-
     saveJob,
-
     getSavedJobs,
-
     deleteSavedJob,
-
+    checkSavedJob,
 } = require("../controllers/savedJobController");
 
+const authMiddleware = require("../middleware/authMiddleware");
+
+
+// ======================================
+// SAVE JOB
+// POST /api/saved-jobs/save
+// ======================================
 router.post(
-
     "/save",
-
     authMiddleware,
-
     saveJob
-
 );
 
+
+// ======================================
+// GET SAVED JOBS
+// GET /api/saved-jobs
+// ======================================
 router.get(
-
     "/",
-
     authMiddleware,
-
     getSavedJobs
-
 );
 
-router.delete(
 
-    "/:id",
-
+// ======================================
+// CHECK SAVED JOB
+// GET /api/saved-jobs/check
+// ======================================
+router.get(
+    "/check",
     authMiddleware,
-
-    deleteSavedJob
-
+    checkSavedJob
 );
+
+
+// ======================================
+// DELETE SAVED JOB
+// DELETE /api/saved-jobs/:id
+// ======================================
+router.delete(
+    "/:id",
+    authMiddleware,
+    deleteSavedJob
+);
+
 
 module.exports = router;

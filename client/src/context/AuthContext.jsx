@@ -1,13 +1,30 @@
-import { createContext, useEffect, useState } from "react";
+import {
+    createContext,
+    useEffect,
+    useState,
+} from "react";
+
 import API from "../services/api";
 
-export const AuthContext = createContext();
 
-function AuthProvider({ children }) {
+export const AuthContext =
+    createContext();
 
-    const [user, setUser] = useState(null);
 
-    const [loading, setLoading] = useState(true);
+function AuthProvider({
+    children,
+}) {
+
+    const [user, setUser] =
+        useState(null);
+
+    const [loading, setLoading] =
+        useState(true);
+
+
+    // =====================================================
+    // CHECK LOGIN
+    // =====================================================
 
     useEffect(() => {
 
@@ -15,11 +32,22 @@ function AuthProvider({ children }) {
 
     }, []);
 
+
+    // =====================================================
+    // GET CURRENT USER
+    // =====================================================
+
     const checkUser = async () => {
 
-        const token = localStorage.getItem("token");
+        const token =
+            localStorage.getItem(
+                "token"
+            );
+
 
         if (!token) {
+
+            setUser(null);
 
             setLoading(false);
 
@@ -27,21 +55,40 @@ function AuthProvider({ children }) {
 
         }
 
+
         try {
 
-            const res = await API.get("/auth/me");
+            const res =
+                await API.get(
+                    "/auth/me"
+                );
 
-            setUser(res.data.user);
 
-        }
+            setUser(
+                res.data?.user ||
+                null
+            );
 
-        catch {
 
-            localStorage.removeItem("token");
+        } catch (error) {
 
-        }
+            console.log(
+                "Auth Check Error:",
+                error
+            );
 
-        finally {
+
+            localStorage.removeItem(
+                "token"
+            );
+
+
+            setUser(
+                null
+            );
+
+
+        } finally {
 
             setLoading(false);
 
@@ -49,26 +96,51 @@ function AuthProvider({ children }) {
 
     };
 
-    const login = (token, userData) => {
 
-        localStorage.setItem("token", token);
+    // =====================================================
+    // LOGIN
+    // =====================================================
 
-        setUser(userData);
+    const login = (
+        token,
+        userData
+    ) => {
+
+        localStorage.setItem(
+            "token",
+            token
+        );
+
+
+        setUser(
+            userData ||
+            null
+        );
 
     };
+
+
+    // =====================================================
+    // LOGOUT
+    // =====================================================
 
     const logout = () => {
 
-        localStorage.removeItem("token");
+        localStorage.removeItem(
+            "token"
+        );
 
-        setUser(null);
+
+        setUser(
+            null
+        );
 
     };
+
 
     return (
 
         <AuthContext.Provider
-
             value={{
 
                 user,
@@ -80,7 +152,6 @@ function AuthProvider({ children }) {
                 logout,
 
             }}
-
         >
 
             {children}
@@ -90,5 +161,6 @@ function AuthProvider({ children }) {
     );
 
 }
+
 
 export default AuthProvider;

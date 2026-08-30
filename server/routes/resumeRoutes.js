@@ -1,21 +1,22 @@
 const express = require("express");
-
 const router = express.Router();
-
-const authMiddleware = require("../middleware/authMiddleware");
-const upload = require("../middleware/uploadMiddleware");
 
 const {
     uploadResume,
     parseResumeWithAI,
     getMyResumes,
-    deleteResume
+    deleteResume,
 } = require("../controllers/resumeController");
 
+const authMiddleware = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 
-// ===============================
-// Upload Resume
-// ===============================
+
+// =====================================================
+// UPLOAD RESUME
+// POST /api/resume/upload
+// =====================================================
+
 router.post(
     "/upload",
     authMiddleware,
@@ -24,9 +25,11 @@ router.post(
 );
 
 
-// ===============================
-// Parse Resume with Gemini AI
-// ===============================
+// =====================================================
+// PARSE / ANALYZE RESUME
+// POST /api/resume/parse
+// =====================================================
+
 router.post(
     "/parse",
     authMiddleware,
@@ -35,9 +38,11 @@ router.post(
 );
 
 
-// ===============================
-// Get My Resumes
-// ===============================
+// =====================================================
+// GET MY RESUMES
+// GET /api/resume/my-resumes
+// =====================================================
+
 router.get(
     "/my-resumes",
     authMiddleware,
@@ -45,9 +50,11 @@ router.get(
 );
 
 
-// ===============================
-// Delete Resume
-// ===============================
+// =====================================================
+// DELETE RESUME
+// DELETE /api/resume/:id
+// =====================================================
+
 router.delete(
     "/:id",
     authMiddleware,

@@ -1,130 +1,276 @@
 const SavedJob = require("../models/SavedJob");
+const Job = require("../models/Job");
 
-// Save Job
+// ======================================
+// SAVE JOB
+// POST /api/saved-jobs/save
+// ======================================
 const saveJob = async (req, res) => {
-
     try {
+        const userId = req.user.id;
 
-        const job = await SavedJob.create({
+        console.log("======================================");
+        console.log("SAVE JOB REQUEST");
+        console.log("USER ID:", userId);
+        console.log("REQUEST BODY:", req.body);
+        console.log("======================================");
 
-            user: req.user.id,
+        const {
+            jobId,
+            title,
+            company,
+            location,
+            matchPercentage,
+            matchingSkills,
+            missingSkills,
+            analysis
+        } = req.body;
 
-            company: req.body.company,
+        // --------------------------------------
+        // Validate job ID
+        // --------------------------------------
 
-            title: req.body.title,
+        if (!jobId) {
+            return res.status(400).json({
+                success: false,
+                message: "Job ID is required"
+            });
+        }
 
-            location: req.body.location,
+        // --------------------------------------
+        // Find actual Job document
+        // --------------------------------------
 
-            matchPercentage: req.body.matchPercentage,
+        const job = await Job.findById(jobId);
 
-            reason: req.body.reason,
+        if (!job) {
+            return res.status(404).json({
+                success: false,
+                message: "Job not found"
+            });
+        }
 
+        console.log("JOB FOUND:", job._id);
+        console.log("JOB TITLE:", job.title);
+
+        // --------------------------------------
+        // Check duplicate
+        // --------------------------------------
+
+        const existingSavedJob = await SavedJob.findOne({
+            user: userId,
+            job: job._id
         });
 
-        res.status(201).json({
+        if (existingSavedJob) {
+            return res.status(400).json({
+                success: false,
+                message: "Job already saved"
+            });
+        }
 
+        // --------------------------------------
+        // Create saved job
+        // --------------------------------------
+
+        const savedJob = await SavedJob.create({
+            user: userId,
+
+            job: job._id,
+
+            matchPercentage:
+                Number(matchPercentage) || 0,
+
+            matchingSkills:
+                Array.isArray(matchingSkills)
+                    ? matchingSkills
+                    : [],
+
+            missingSkills:
+                Array.isArray(missingSkills)
+                    ? missingSkills
+                    : [],
+
+            analysis:
+                analysis || ""
+        });
+
+        console.log("======================================");
+        console.log("JOB SAVED SUCCESSFULLY");
+        console.log("SAVED JOB ID:", savedJob._id);
+        console.log("JOB ID:", job._id);
+        console.log("======================================");
+
+        return res.status(201).json({
             success: true,
-
-            message: "Job Saved",
-
-            job,
-
+            message: "Job saved successfully",
+            savedJob
         });
 
-    }
+    } catch (error) {
 
-    catch (error) {
+        console.error("======================================");
+        console.error("SAVE JOB ERROR");
+        console.error(error);
+        console.error("======================================");
 
-        res.status(500).json({
-
+        return res.status(500).json({
             success: false,
-
-            message: error.message,
-
+            message: "Failed to save job",
+            error: error.message
         });
-
     }
-
 };
 
-// My Saved Jobs
 
+// ======================================
+// GET SAVED JOBS
+// GET /api/saved-jobs
+// ======================================
 const getSavedJobs = async (req, res) => {
-
     try {
 
-        const jobs = await SavedJob.find({
+        const userId = req.user.id;
 
-            user: req.user.id,
+        console.log("======================================");
+        console.log("GET SAVED JOBS");
+        console.log("USER ID:", userId);
+        console.log("======================================");
 
-        }).sort({
-
-            createdAt: -1,
-
+        const savedJobs = await SavedJob.find({
+            user: userId
+        })
+        .populate("job")
+        .sort({
+            createdAt: -1
         });
 
-        res.json({
-
+        return res.status(200).json({
             success: true,
-
-            jobs,
-
+            count: savedJobs.length,
+            savedJobs
         });
 
-    }
+    } catch (error) {
 
-    catch (error) {
+        console.error("GET SAVED JOBS ERROR:");
+        console.error(error);
 
-        res.status(500).json({
-
+        return res.status(500).json({
             success: false,
-
-            message: error.message,
-
+            message: "Failed to fetch saved jobs",
+            error: error.message
         });
-
     }
-
 };
 
-// Delete Saved Job
 
+// ======================================
+// DELETE SAVED JOB
+// DELETE /api/saved-jobs/:id
+// ======================================
 const deleteSavedJob = async (req, res) => {
-
     try {
 
-        await SavedJob.findByIdAndDelete(req.params.id);
+        const userId = req.user.id;
+        const { id } = req.params;
 
-        res.json({
+        console.log("======================================");
+        console.log("DELETE SAVED JOB");
+        console.log("USER ID:", userId);
+        console.log("SAVED JOB ID:", id);
+        console.log("======================================");
 
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Saved job ID is required"
+            });
+        }
+
+        const deletedJob = await SavedJob.findOneAndDelete({
+            _id: id,
+            user: userId
+        });
+
+        if (!deletedJob) {
+            return res.status(404).json({
+                success: false,
+                message: "Saved job not found"
+            });
+        }
+
+        return res.status(200).json({
             success: true,
-
-            message: "Removed",
-
+            message: "Job removed from saved jobs",
+            deletedJob
         });
 
-    }
+    } catch (error) {
 
-    catch (error) {
+        console.error("DELETE SAVED JOB ERROR:");
+        console.error(error);
 
-        res.status(500).json({
-
+        return res.status(500).json({
             success: false,
+            message: "Failed to delete saved job",
+            error: error.message
+        });
+    }
+};
 
-            message: error.message,
 
+// ======================================
+// CHECK SAVED JOB
+// GET /api/saved-jobs/check
+// ======================================
+const checkSavedJob = async (req, res) => {
+    try {
+
+        const userId = req.user.id;
+
+        const { jobId } = req.query;
+
+        if (!jobId) {
+            return res.status(400).json({
+                success: false,
+                message: "Job ID is required"
+            });
+        }
+
+        const savedJob = await SavedJob.findOne({
+            user: userId,
+            job: jobId
+        })
+        .populate("job");
+
+        return res.status(200).json({
+            success: true,
+            isSaved: !!savedJob,
+            savedJob: savedJob || null
         });
 
-    }
+    } catch (error) {
 
+        console.error("CHECK SAVED JOB ERROR:");
+        console.error(error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to check saved job",
+            error: error.message
+        });
+    }
 };
+
+
+// ======================================
+// EXPORT
+// ======================================
 
 module.exports = {
-
     saveJob,
-
     getSavedJobs,
-
     deleteSavedJob,
-
+    checkSavedJob
 };

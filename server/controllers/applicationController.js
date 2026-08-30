@@ -1,11 +1,18 @@
 const Application = require("../models/Application");
 
-// Apply Job
+
+// =====================================================
+// APPLY TO JOB
+// =====================================================
+
 const applyJob = async (req, res) => {
 
     try {
 
+        const userId = req.user.id;
+
         const {
+            jobId,
             company,
             position,
             location,
@@ -13,41 +20,118 @@ const applyJob = async (req, res) => {
             jobType,
         } = req.body;
 
-        const application = await Application.create({
 
-            user: req.user.id,
+        // =================================================
+        // VALIDATION
+        // =================================================
 
-            company,
+        if (!company || !position) {
 
-            position,
+            return res.status(400).json({
 
-            location,
+                success: false,
 
-            salary,
+                message:
+                    "Company and position are required.",
 
-            jobType,
+            });
 
-        });
+        }
 
-        res.status(201).json({
+
+        // =================================================
+        // PREVENT DUPLICATE APPLICATION
+        // =================================================
+
+        const existingApplication =
+            await Application.findOne({
+
+                user: userId,
+
+                company: company,
+
+                position: position,
+
+            });
+
+
+        if (existingApplication) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "You have already applied to this job.",
+
+                application:
+                    existingApplication,
+
+            });
+
+        }
+
+
+        // =================================================
+        // CREATE APPLICATION
+        // =================================================
+
+        const application =
+            await Application.create({
+
+                user:
+                    userId,
+
+                jobId:
+                    jobId || null,
+
+                company:
+                    company,
+
+                position:
+                    position,
+
+                location:
+                    location || "",
+
+                salary:
+                    salary || "",
+
+                jobType:
+                    jobType || "",
+
+                status:
+                    "Applied",
+
+            });
+
+
+        return res.status(201).json({
 
             success: true,
 
-            message: "Application Submitted Successfully",
+            message:
+                "Application Submitted Successfully",
 
             application,
 
         });
 
-    }
 
-    catch (error) {
+    } catch (error) {
 
-        res.status(500).json({
+        console.error(
+            "Apply Job Error:",
+            error
+        );
+
+
+        return res.status(500).json({
 
             success: false,
 
-            message: error.message,
+            message:
+                error.message,
 
         });
 
@@ -55,38 +139,58 @@ const applyJob = async (req, res) => {
 
 };
 
-// Get Applications
-const getMyApplications = async (req, res) => {
+
+// =====================================================
+// GET MY APPLICATIONS
+// =====================================================
+
+const getMyApplications = async (
+    req,
+    res
+) => {
 
     try {
 
-        const applications = await Application.find({
+        const applications =
+            await Application.find({
 
-            user: req.user.id,
+                user:
+                    req.user.id,
 
-        }).sort({
+            }).sort({
 
-            createdAt: -1,
+                createdAt:
+                    -1,
 
-        });
+            });
 
-        res.status(200).json({
+
+        return res.status(200).json({
 
             success: true,
+
+            count:
+                applications.length,
 
             applications,
 
         });
 
-    }
 
-    catch (error) {
+    } catch (error) {
 
-        res.status(500).json({
+        console.error(
+            "Get Applications Error:",
+            error
+        );
+
+
+        return res.status(500).json({
 
             success: false,
 
-            message: error.message,
+            message:
+                error.message,
 
         });
 
@@ -94,30 +198,71 @@ const getMyApplications = async (req, res) => {
 
 };
 
-// Delete
-const deleteApplication = async (req, res) => {
+
+// =====================================================
+// DELETE MY APPLICATION
+// =====================================================
+
+const deleteApplication = async (
+    req,
+    res
+) => {
 
     try {
 
-        await Application.findByIdAndDelete(req.params.id);
+        const application =
+            await Application.findOne({
 
-        res.status(200).json({
+                _id:
+                    req.params.id,
+
+                user:
+                    req.user.id,
+
+            });
+
+
+        if (!application) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message:
+                    "Application not found.",
+
+            });
+
+        }
+
+
+        await application.deleteOne();
+
+
+        return res.status(200).json({
 
             success: true,
 
-            message: "Application Deleted",
+            message:
+                "Application Deleted",
 
         });
 
-    }
 
-    catch (error) {
+    } catch (error) {
 
-        res.status(500).json({
+        console.error(
+            "Delete Application Error:",
+            error
+        );
+
+
+        return res.status(500).json({
 
             success: false,
 
-            message: error.message,
+            message:
+                error.message,
 
         });
 
@@ -125,18 +270,28 @@ const deleteApplication = async (req, res) => {
 
 };
 
-// Dashboard Stats
-const getApplicationStats = async (req, res) => {
+
+// =====================================================
+// APPLICATION STATS
+// =====================================================
+
+const getApplicationStats = async (
+    req,
+    res
+) => {
 
     try {
 
-        const totalApplications = await Application.countDocuments({
+        const totalApplications =
+            await Application.countDocuments({
 
-            user: req.user.id,
+                user:
+                    req.user.id,
 
-        });
+            });
 
-        res.status(200).json({
+
+        return res.status(200).json({
 
             success: true,
 
@@ -144,21 +299,32 @@ const getApplicationStats = async (req, res) => {
 
         });
 
-    }
 
-    catch (error) {
+    } catch (error) {
 
-        res.status(500).json({
+        console.error(
+            "Application Stats Error:",
+            error
+        );
+
+
+        return res.status(500).json({
 
             success: false,
 
-            message: error.message,
+            message:
+                error.message,
 
         });
 
     }
 
 };
+
+
+// =====================================================
+// EXPORT
+// =====================================================
 
 module.exports = {
 

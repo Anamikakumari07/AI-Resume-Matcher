@@ -42,7 +42,7 @@ app.use("/api/resume", resumeRoutes);
 app.use("/api/gemini", geminiRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/application", applicationRoutes);
+app.use("/api/applications", applicationRoutes);
 app.use("/api/saved-jobs", savedJobRoutes);
 app.use("/api/job-match", jobMatchRoutes);
 // 404 Route

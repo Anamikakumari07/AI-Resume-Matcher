@@ -1,68 +1,56 @@
 const mongoose = require("mongoose");
 
 const savedJobSchema = new mongoose.Schema(
-
     {
-
         user: {
-
             type: mongoose.Schema.Types.ObjectId,
-
             ref: "User",
-
             required: true,
-
         },
 
-        company: {
-
-            type: String,
-
+        job: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Job",
             required: true,
-
-        },
-
-        title: {
-
-            type: String,
-
-            required: true,
-
-        },
-
-        location: {
-
-            type: String,
-
-            default: "Remote",
-
         },
 
         matchPercentage: {
-
             type: Number,
-
             default: 0,
-
         },
 
-        reason: {
+        matchingSkills: {
+            type: [String],
+            default: [],
+        },
 
+        missingSkills: {
+            type: [String],
+            default: [],
+        },
+
+        analysis: {
             type: String,
-
             default: "",
-
         },
-
     },
-
     {
-
         timestamps: true,
-
     }
-
 );
+
+
+// Prevent the same job from being saved twice
+savedJobSchema.index(
+    {
+        user: 1,
+        job: 1,
+    },
+    {
+        unique: true,
+    }
+);
+
 
 module.exports = mongoose.model(
     "SavedJob",

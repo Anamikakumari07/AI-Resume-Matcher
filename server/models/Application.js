@@ -8,6 +8,12 @@ const applicationSchema = new mongoose.Schema(
             required: true,
         },
 
+        jobId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Job",
+            required: true,
+        },
+
         company: {
             type: String,
             required: true,
@@ -53,6 +59,19 @@ const applicationSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+
+// Prevent duplicate applications for the same job
+applicationSchema.index(
+    {
+        user: 1,
+        jobId: 1,
+    },
+    {
+        unique: true,
+    }
+);
+
 
 module.exports = mongoose.model(
     "Application",
