@@ -1,17 +1,23 @@
 import { useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 
-const API_URL = "http://localhost:5000";
 
 const UploadResume = () => {
 
-    const [file, setFile] = useState(null);
+    const [file, setFile] =
+        useState(null);
 
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] =
+        useState(false);
 
-    const [message, setMessage] = useState("");
+    const [message, setMessage] =
+        useState("");
 
-    const [resumeData, setResumeData] = useState(null);
+    const [resumeData, setResumeData] =
+        useState(null);
+
+    const [atsScore, setAtsScore] =
+        useState(null);
 
     const [uploadStatus, setUploadStatus] =
         useState("idle");
@@ -31,251 +37,55 @@ const UploadResume = () => {
 
 
         if (!selectedFile) {
+
+            setFile(null);
+
             return;
+
         }
 
 
-        setFile(selectedFile);
+        setFile(
+            selectedFile
+        );
+
 
         setMessage("");
 
         setResumeData(null);
 
-        setUploadStatus("idle");
+        setAtsScore(null);
 
-        setAnalysisStatus("idle");
+        setUploadStatus(
+            "idle"
+        );
+
+        setAnalysisStatus(
+            "idle"
+        );
 
     };
 
 
     // =====================================================
-    // UPLOAD + ANALYZE RESUME
+    // UPLOAD + ANALYZE
     // =====================================================
 
-    const handleUploadAndAnalyze = async (e) => {
+    const handleUploadAndAnalyze =
+        async (e) => {
 
-        e.preventDefault();
-
-
-        // =================================================
-        // FILE VALIDATION
-        // =================================================
-
-        if (!file) {
-
-            setMessage(
-                "Please select a resume first."
-            );
-
-            return;
-
-        }
-
-
-        // =================================================
-        // FILE TYPE VALIDATION
-        // =================================================
-
-        const allowedTypes = [
-            "application/pdf",
-
-            "application/msword",
-
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ];
-
-
-        if (
-            !allowedTypes.includes(
-                file.type
-            )
-        ) {
-
-            setMessage(
-                "Please upload a PDF, DOC, or DOCX resume."
-            );
-
-            return;
-
-        }
-
-
-        // =================================================
-        // FILE SIZE VALIDATION
-        // =================================================
-
-        const maxSize =
-            5 * 1024 * 1024;
-
-
-        if (
-            file.size > maxSize
-        ) {
-
-            setMessage(
-                "Resume file must be smaller than 5 MB."
-            );
-
-            return;
-
-        }
-
-
-        // =================================================
-        // TOKEN
-        // =================================================
-
-        const token =
-            localStorage.getItem(
-                "token"
-            );
-
-
-        if (!token) {
-
-            setMessage(
-                "Please login again."
-            );
-
-            return;
-
-        }
-
-
-        try {
-
-            setLoading(true);
-
-            setMessage(
-                "Uploading resume..."
-            );
-
-            setResumeData(null);
-
-            setUploadStatus(
-                "uploading"
-            );
-
-            setAnalysisStatus(
-                "idle"
-            );
+            e.preventDefault();
 
 
             // =================================================
-            // STEP 1 — UPLOAD
+            // FILE CHECK
             // =================================================
 
-            const formData =
-                new FormData();
-
-
-            formData.append(
-                "resume",
-                file
-            );
-
-
-            const uploadResponse =
-                await axios.post(
-
-                    `${API_URL}/api/resume/upload`,
-
-                    formData,
-
-                    {
-                        headers: {
-
-                            Authorization:
-                                `Bearer ${token}`,
-
-                        },
-                    }
-
-                );
-
-
-            console.log(
-                "Upload Response:",
-                uploadResponse.data
-            );
-
-
-            setUploadStatus(
-                "uploaded"
-            );
-
-
-            setMessage(
-                "✅ Resume uploaded. Now analyzing with AI..."
-            );
-
-
-            // =================================================
-            // STEP 2 — ANALYZE
-            // =================================================
-
-            setAnalysisStatus(
-                "analyzing"
-            );
-
-
-            const parseFormData =
-                new FormData();
-
-
-            parseFormData.append(
-                "resume",
-                file
-            );
-
-
-            const parseResponse =
-                await axios.post(
-
-                    `${API_URL}/api/resume/parse`,
-
-                    parseFormData,
-
-                    {
-                        headers: {
-
-                            Authorization:
-                                `Bearer ${token}`,
-
-                        },
-                    }
-
-                );
-
-
-            console.log(
-                "Parse Response:",
-                parseResponse.data
-            );
-
-
-            // =================================================
-            // CHECK RESPONSE
-            // =================================================
-
-            if (
-                !parseResponse.data ||
-                !parseResponse.data.success
-            ) {
-
-                setAnalysisStatus(
-                    "failed"
-                );
-
+            if (!file) {
 
                 setMessage(
-
-                    parseResponse.data?.message ||
-
-                    "Resume uploaded, but AI analysis failed."
-
+                    "Please select a resume first."
                 );
-
 
                 return;
 
@@ -283,71 +93,364 @@ const UploadResume = () => {
 
 
             // =================================================
-            // SAVE DATA
+            // PDF CHECK
             // =================================================
 
-            const extractedData =
-                parseResponse.data.data;
+            if (
+                file.type !==
+                "application/pdf"
+            ) {
+
+                setMessage(
+                    "Please upload a PDF resume."
+                );
+
+                return;
+
+            }
 
 
-            setResumeData(
-                extractedData
-            );
+            // =================================================
+            // FILE SIZE
+            // =================================================
+
+            const maxSize =
+                5 * 1024 * 1024;
 
 
-            setAnalysisStatus(
-                "completed"
-            );
+            if (
+                file.size >
+                maxSize
+            ) {
+
+                setMessage(
+                    "Resume file must be smaller than 5 MB."
+                );
+
+                return;
+
+            }
 
 
-            setMessage(
-                "✅ Resume uploaded and analyzed successfully!"
-            );
+            // =================================================
+            // TOKEN
+            // =================================================
+
+            const token =
+                localStorage.getItem(
+                    "token"
+                );
 
 
-        } catch (error) {
+            if (!token) {
 
-            console.error(
-                "Resume Upload/Analysis Error:",
-                error
-            );
+                setMessage(
+                    "Please login again."
+                );
 
+                return;
 
-            console.error(
-                "Server Response:",
-                error.response?.data
-            );
+            }
 
 
-            setAnalysisStatus(
-                "failed"
-            );
+            try {
+
+                setLoading(true);
+
+                setMessage("");
+
+                setResumeData(
+                    null
+                );
+
+                setAtsScore(
+                    null
+                );
+
+                setUploadStatus(
+                    "uploading"
+                );
+
+                setAnalysisStatus(
+                    "idle"
+                );
 
 
-            const serverMessage =
-                error.response?.data?.message;
+                // =================================================
+                // STEP 1 — UPLOAD
+                // =================================================
+
+                const formData =
+                    new FormData();
 
 
-            setMessage(
-
-                serverMessage ||
-
-                "Resume upload or analysis failed."
-
-            );
+                formData.append(
+                    "resume",
+                    file
+                );
 
 
-        } finally {
+                const uploadResponse =
+                    await API.post(
+                        "/resume/upload",
+                        formData,
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`,
+                            },
+                        }
+                    );
 
-            setLoading(false);
 
-        }
+                console.log(
+                    "Upload Response:",
+                    uploadResponse.data
+                );
 
-    };
+
+                if (
+                    !uploadResponse.data?.success
+                ) {
+
+                    setUploadStatus(
+                        "failed"
+                    );
+
+                    setAnalysisStatus(
+                        "failed"
+                    );
+
+                    setMessage(
+                        uploadResponse.data?.message ||
+                        "Resume upload failed."
+                    );
+
+                    return;
+
+                }
+
+
+                setUploadStatus(
+                    "uploaded"
+                );
+
+
+                setMessage(
+                    "✅ Resume uploaded. Now analyzing with AI..."
+                );
+
+
+                // =================================================
+                // GET EXACT RESUME ID
+                // =================================================
+
+                const resumeId =
+                    uploadResponse
+                        .data
+                        ?.resume
+                        ?._id;
+
+
+                if (
+                    !resumeId
+                ) {
+
+                    setAnalysisStatus(
+                        "failed"
+                    );
+
+                    setMessage(
+                        "Resume uploaded, but resume ID was not returned."
+                    );
+
+                    return;
+
+                }
+
+
+                console.log(
+                    "Uploaded Resume ID:",
+                    resumeId
+                );
+
+
+                // =================================================
+                // STEP 2 — ANALYZE
+                // =================================================
+
+                setAnalysisStatus(
+                    "analyzing"
+                );
+
+
+                const parseFormData =
+                    new FormData();
+
+
+                parseFormData.append(
+                    "resume",
+                    file
+                );
+
+
+                // Send the exact Resume ID
+                // so backend updates this record.
+
+                parseFormData.append(
+                    "resumeId",
+                    resumeId
+                );
+
+
+                const parseResponse =
+                    await API.post(
+                        "/resume/parse",
+                        parseFormData,
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`,
+                            },
+                        }
+                    );
+
+
+                console.log(
+                    "Parse Response:",
+                    parseResponse.data
+                );
+
+
+                // =================================================
+                // CHECK RESPONSE
+                // =================================================
+
+                if (
+                    !parseResponse.data ||
+                    !parseResponse.data.success
+                ) {
+
+                    setAnalysisStatus(
+                        "failed"
+                    );
+
+                    setMessage(
+
+                        parseResponse
+                            .data
+                            ?.message ||
+
+                        "Resume uploaded, but AI analysis failed."
+
+                    );
+
+                    return;
+
+                }
+
+
+                // =================================================
+                // SAVE ANALYSIS
+                // =================================================
+
+                const extractedData =
+                    parseResponse
+                        .data
+                        ?.data ||
+                    null;
+
+
+                const returnedATS =
+                    Number(
+                        parseResponse
+                            .data
+                            ?.atsScore
+                    );
+
+
+                setResumeData(
+                    extractedData
+                );
+
+
+                setAtsScore(
+
+                    Number.isFinite(
+                        returnedATS
+                    )
+                        ? returnedATS
+                        : 0
+
+                );
+
+
+                setAnalysisStatus(
+                    "completed"
+                );
+
+
+                setMessage(
+                    "✅ Resume uploaded and analyzed successfully!"
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Resume Upload/Analysis Error:",
+                    error
+                );
+
+
+                console.error(
+                    "Server Response:",
+                    error.response?.data
+                );
+
+
+                setUploadStatus(
+                    previous =>
+                        previous ===
+                        "uploaded"
+                            ? previous
+                            : "failed"
+                );
+
+
+                setAnalysisStatus(
+                    "failed"
+                );
+
+
+                const serverMessage =
+                    error.response
+                        ?.data
+                        ?.message;
+
+
+                setMessage(
+
+                    serverMessage ||
+
+                    "Resume upload or analysis failed."
+
+                );
+
+
+            } finally {
+
+                setLoading(
+                    false
+                );
+
+            }
+
+        };
 
 
     // =====================================================
-    // STATUS HELPERS
+    // STATUS CLASS
     // =====================================================
 
     const getStatusClass = (
@@ -355,8 +458,10 @@ const UploadResume = () => {
     ) => {
 
         if (
-            status === "completed" ||
-            status === "uploaded"
+            status ===
+                "completed" ||
+            status ===
+                "uploaded"
         ) {
 
             return "border-green-200 bg-green-50";
@@ -365,8 +470,10 @@ const UploadResume = () => {
 
 
         if (
-            status === "uploading" ||
-            status === "analyzing"
+            status ===
+                "uploading" ||
+            status ===
+                "analyzing"
         ) {
 
             return "border-blue-200 bg-blue-50";
@@ -375,7 +482,8 @@ const UploadResume = () => {
 
 
         if (
-            status === "failed"
+            status ===
+            "failed"
         ) {
 
             return "border-red-200 bg-red-50";
@@ -389,14 +497,16 @@ const UploadResume = () => {
 
 
     // =====================================================
-    // RENDER STATUS TEXT
+    // STATUS TEXT
     // =====================================================
 
     const getStatusText = (
         status
     ) => {
 
-        switch (status) {
+        switch (
+            status
+        ) {
 
             case "uploading":
                 return "Uploading...";
@@ -439,12 +549,11 @@ const UploadResume = () => {
                     Resume Parser
                 </h2>
 
-                <p className="text-muted mb-0">
 
-                    Upload your resume and let AI
+                <p className="text-muted mb-0">
+                    Upload your PDF resume and let AI
                     analyze your skills, education,
                     experience, and projects.
-
                 </p>
 
             </div>
@@ -462,7 +571,7 @@ const UploadResume = () => {
 
 
                 {/* =================================================
-                    STATUS PANEL
+                    STATUS
                 ================================================= */}
 
                 <div className="row g-3 mb-4">
@@ -509,11 +618,14 @@ const UploadResume = () => {
                                         Resume Upload
                                     </div>
 
+
                                     <small className="text-muted">
 
-                                        {getStatusText(
-                                            uploadStatus
-                                        )}
+                                        {
+                                            getStatusText(
+                                                uploadStatus
+                                            )
+                                        }
 
                                     </small>
 
@@ -566,11 +678,14 @@ const UploadResume = () => {
                                         AI Analysis
                                     </div>
 
+
                                     <small className="text-muted">
 
-                                        {getStatusText(
-                                            analysisStatus
-                                        )}
+                                        {
+                                            getStatusText(
+                                                analysisStatus
+                                            )
+                                        }
 
                                     </small>
 
@@ -595,8 +710,6 @@ const UploadResume = () => {
                     }
                 >
 
-                    {/* FILE */}
-
                     <label className="form-label fw-semibold">
 
                         Choose Resume
@@ -605,21 +718,15 @@ const UploadResume = () => {
 
 
                     <input
-
                         type="file"
-
                         className="form-control mb-3"
-
-                        accept=".pdf,.doc,.docx"
-
+                        accept=".pdf,application/pdf"
                         onChange={
                             handleFileChange
                         }
-
                         disabled={
                             loading
                         }
-
                     />
 
 
@@ -643,7 +750,10 @@ const UploadResume = () => {
 
                                 {(
                                     file.size /
-                                    (1024 * 1024)
+                                    (
+                                        1024 *
+                                        1024
+                                    )
                                 ).toFixed(2)}
 
                                 {" "}MB
@@ -658,22 +768,16 @@ const UploadResume = () => {
                     {/* BUTTON */}
 
                     <button
-
                         className="btn btn-primary"
-
                         disabled={
                             loading ||
                             !file
                         }
-
                         type="submit"
-
                     >
 
                         {loading
-
                             ? "🤖 Processing Resume..."
-
                             : "Upload & Analyze Resume"}
 
                     </button>
@@ -713,7 +817,7 @@ const UploadResume = () => {
 
 
             {/* =====================================================
-                ANALYZED RESUME STATUS
+                ANALYSIS STATUS
             ===================================================== */}
 
             {resumeData && (
@@ -728,19 +832,34 @@ const UploadResume = () => {
                                 Resume Analysis Complete
                             </h3>
 
-                            <p className="text-muted mb-0">
 
+                            <p className="text-muted mb-0">
                                 Your resume has been
                                 successfully analyzed.
-
                             </p>
 
                         </div>
 
 
-                        <div className="badge bg-success fs-6 p-2">
+                        <div className="d-flex gap-2 flex-wrap">
 
-                            ✅ Ready for Job Matching
+                            {atsScore !== null && (
+
+                                <div className="badge bg-primary fs-6 p-2">
+
+                                    ATS Score:{" "}
+                                    {atsScore}%
+
+                                </div>
+
+                            )}
+
+
+                            <div className="badge bg-success fs-6 p-2">
+
+                                ✅ Ready for Job Matching
+
+                            </div>
 
                         </div>
 
@@ -764,51 +883,49 @@ const UploadResume = () => {
                     </h3>
 
 
-                    {/* =================================================
-                        NAME
-                    ================================================= */}
+                    {/* NAME */}
 
                     <h5>
                         Name
                     </h5>
 
                     <p>
-                        {resumeData.name ||
-                            "Not available"}
+                        {
+                            resumeData.name ||
+                            "Not available"
+                        }
                     </p>
 
 
-                    {/* =================================================
-                        EMAIL
-                    ================================================= */}
+                    {/* EMAIL */}
 
                     <h5>
                         Email
                     </h5>
 
                     <p>
-                        {resumeData.email ||
-                            "Not available"}
+                        {
+                            resumeData.email ||
+                            "Not available"
+                        }
                     </p>
 
 
-                    {/* =================================================
-                        PHONE
-                    ================================================= */}
+                    {/* PHONE */}
 
                     <h5>
                         Phone
                     </h5>
 
                     <p>
-                        {resumeData.phone ||
-                            "Not available"}
+                        {
+                            resumeData.phone ||
+                            "Not available"
+                        }
                     </p>
 
 
-                    {/* =================================================
-                        SKILLS
-                    ================================================= */}
+                    {/* SKILLS */}
 
                     <h5>
                         Skills
@@ -834,9 +951,7 @@ const UploadResume = () => {
                                         }
                                         className="badge bg-light text-dark border p-2"
                                     >
-
                                         {skill}
-
                                     </span>
 
                                 )
@@ -853,9 +968,7 @@ const UploadResume = () => {
                     )}
 
 
-                    {/* =================================================
-                        EDUCATION
-                    ================================================= */}
+                    {/* EDUCATION */}
 
                     <h5>
                         Education
@@ -883,10 +996,10 @@ const UploadResume = () => {
                                     <p className="mb-1">
 
                                         <strong>
-
-                                            {edu.institution ||
-                                                "Institution not available"}
-
+                                            {
+                                                edu.institution ||
+                                                "Institution not available"
+                                            }
                                         </strong>
 
                                     </p>
@@ -894,16 +1007,20 @@ const UploadResume = () => {
 
                                     <p className="mb-1">
 
-                                        {edu.degree ||
-                                            "Degree not available"}
+                                        {
+                                            edu.degree ||
+                                            "Degree not available"
+                                        }
 
                                     </p>
 
 
                                     <p className="mb-1">
 
-                                        {edu.dates ||
-                                            "Dates not available"}
+                                        {
+                                            edu.dates ||
+                                            "Dates not available"
+                                        }
 
                                     </p>
 
@@ -913,8 +1030,9 @@ const UploadResume = () => {
                                         <p className="mb-0">
 
                                             CGPA:{" "}
-
-                                            {edu.cgpa}
+                                            {
+                                                edu.cgpa
+                                            }
 
                                         </p>
 
@@ -923,7 +1041,6 @@ const UploadResume = () => {
                                 </div>
 
                             )
-
                         )
 
                     ) : (
@@ -935,9 +1052,7 @@ const UploadResume = () => {
                     )}
 
 
-                    {/* =================================================
-                        EXPERIENCE
-                    ================================================= */}
+                    {/* EXPERIENCE */}
 
                     <h5>
                         Experience
@@ -966,8 +1081,10 @@ const UploadResume = () => {
 
                                         <strong>
 
-                                            {exp.title ||
-                                                "Title not available"}
+                                            {
+                                                exp.title ||
+                                                "Title not available"
+                                            }
 
                                         </strong>
 
@@ -976,8 +1093,10 @@ const UploadResume = () => {
 
                                     <p className="mb-1">
 
-                                        {exp.organization ||
-                                            "Organization not available"}
+                                        {
+                                            exp.organization ||
+                                            "Organization not available"
+                                        }
 
                                     </p>
 
@@ -986,7 +1105,9 @@ const UploadResume = () => {
 
                                         <p className="mb-1">
 
-                                            {exp.dates}
+                                            {
+                                                exp.dates
+                                            }
 
                                         </p>
 
@@ -995,15 +1116,16 @@ const UploadResume = () => {
 
                                     <p className="mb-0">
 
-                                        {exp.description ||
-                                            "No description available"}
+                                        {
+                                            exp.description ||
+                                            "No description available"
+                                        }
 
                                     </p>
 
                                 </div>
 
                             )
-
                         )
 
                     ) : (
@@ -1015,9 +1137,7 @@ const UploadResume = () => {
                     )}
 
 
-                    {/* =================================================
-                        PROJECTS
-                    ================================================= */}
+                    {/* PROJECTS */}
 
                     <h5>
                         Projects
@@ -1046,8 +1166,10 @@ const UploadResume = () => {
 
                                         <strong>
 
-                                            {project.title ||
-                                                "Project title not available"}
+                                            {
+                                                project.title ||
+                                                "Project title not available"
+                                            }
 
                                         </strong>
 
@@ -1056,8 +1178,10 @@ const UploadResume = () => {
 
                                     <p className="mb-1">
 
-                                        {project.description ||
-                                            "No description available"}
+                                        {
+                                            project.description ||
+                                            "No description available"
+                                        }
 
                                     </p>
 
@@ -1074,9 +1198,11 @@ const UploadResume = () => {
                                             </strong>{" "}
 
                                             {
-                                                project.technologies.join(
-                                                    ", "
-                                                )
+                                                project
+                                                    .technologies
+                                                    .join(
+                                                        ", "
+                                                    )
                                             }
 
                                         </p>
@@ -1086,7 +1212,6 @@ const UploadResume = () => {
                                 </div>
 
                             )
-
                         )
 
                     ) : (
@@ -1098,9 +1223,7 @@ const UploadResume = () => {
                     )}
 
 
-                    {/* =================================================
-                        CERTIFICATIONS
-                    ================================================= */}
+                    {/* CERTIFICATIONS */}
 
                     <h5>
                         Certifications
@@ -1142,15 +1265,14 @@ const UploadResume = () => {
                     )}
 
 
-                    {/* =================================================
-                        FINAL STATUS
-                    ================================================= */}
+                    {/* FINAL STATUS */}
 
                     <div className="alert alert-success mt-4 mb-0">
 
                         <strong>
                             ✅ Resume Analysis Complete
                         </strong>
+
 
                         <p className="mb-0 mt-2">
 
@@ -1172,5 +1294,6 @@ const UploadResume = () => {
     );
 
 };
+
 
 export default UploadResume;
