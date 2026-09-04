@@ -1,104 +1,119 @@
-# AI Resume Matcher
+# 🤖 AI Resume Matcher
 
-## 📌 Description
+AI Resume Matcher is a full-stack MERN application that uses **Google Gemini AI** to analyze resumes, calculate ATS scores, and recommend relevant jobs based on a user's skills and experience.
 
-AI Resume Matcher is a MERN Stack application that allows users to upload resumes, receive ATS scores, get AI-powered job recommendations, save jobs, apply to jobs, and track applications.
+The application also provides resume history, job saving, job applications, application tracking, profile management, dashboard analytics, and an admin dashboard.
 
 ---
 
-## Features
+## 🚀 Live Demo
 
-- User Authentication (JWT)
+### Frontend
+https://ai-resume-matcher-4.onrender.com
+
+### Backend API
+https://ai-resume-matcher-3-abun.onrender.com
+
+---
+
+## ✨ Features
+
+### 👤 User Features
+
+- User Registration and Login
+- JWT-based Authentication
+- Protected Routes
+- Profile Management
 - Resume Upload
 - Resume History
+- Resume Analysis
 - ATS Score
-- AI Job Matching
+- AI-Powered Job Matching
+- Matching Skills
+- Missing Skills
+- Job Recommendations
 - Save Jobs
-- Apply Jobs
+- Apply to Jobs
+- Application Tracking
 - Dashboard Analytics
-- Profile Management
-- Admin Dashboard
 - Dark Mode
+
+### 🧠 AI Features
+
+- Resume parsing using Google Gemini
+- AI-generated resume analysis
+- ATS score calculation
+- AI-powered job recommendations
+- Matching and missing skill analysis
+- Keyword-based fallback matching
+
+### 🛠️ Admin Features
+
+- Admin Authentication
+- User Management
+- Resume Management
+- Job Management
+- Application Management
+- Dashboard Statistics
 
 ---
 
-## Tech Stack
+## 🧰 Tech Stack
 
 ### Frontend
 
 - React
+- React Router
 - Tailwind CSS
 - Axios
+- Vite
 
 ### Backend
 
 - Node.js
 - Express.js
 - MongoDB
+- Mongoose
 - JWT
 - Multer
+- Cloudinary
 
 ### AI
 
 - Google Gemini API
 
----
+### Deployment
 
-## Installation
-
-### Backend
-
-```bash
-cd server
-npm install
-npm run dev
-```
-
-### Frontend
-
-```bash
-cd client
-npm install
-npm run dev
-```
+- Render
+- Cloudinary
+- MongoDB
 
 ---
 
-## Environment Variables
+## 🏗️ Project Architecture
 
-### Backend
-
-```
-PORT=
-MONGO_URI=
-JWT_SECRET=
-GEMINI_API_KEY=
-```
-
-### Frontend
-
-```
-VITE_API_URL=
-```
-
----
-
-## Author
-
-Anamika Kumari
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```text
+AI-Resume-Matcher/
+│
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   │
+│   ├── public/
+│   ├── package.json
+│   └── vite.config.js
+│
+├── server/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── uploads/
+│   ├── server.js
+│   └── package.json
+│
+└── README.md
