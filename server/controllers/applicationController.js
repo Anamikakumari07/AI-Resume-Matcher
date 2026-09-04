@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const Application = require("../models/Application");
 
 
@@ -5,11 +7,37 @@ const Application = require("../models/Application");
 // APPLY TO JOB
 // =====================================================
 
-const applyJob = async (req, res) => {
+const applyJob = async (
+    req,
+    res
+) => {
 
     try {
 
-        const userId = req.user.id;
+        // =================================================
+        // AUTH
+        // =================================================
+
+        if (
+            !req.user ||
+            !req.user.id
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "User authentication required."
+
+            });
+
+        }
+
+
+        const userId =
+            req.user.id;
+
 
         const {
             jobId,
@@ -17,7 +45,7 @@ const applyJob = async (req, res) => {
             position,
             location,
             salary,
-            jobType,
+            jobType
         } = req.body;
 
 
@@ -25,14 +53,68 @@ const applyJob = async (req, res) => {
         // VALIDATION
         // =================================================
 
-        if (!company || !position) {
+        if (
+            !jobId
+        ) {
 
             return res.status(400).json({
 
                 success: false,
 
                 message:
-                    "Company and position are required.",
+                    "Job ID is required."
+
+            });
+
+        }
+
+
+        if (
+            !mongoose.Types.ObjectId.isValid(
+                jobId
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid job ID."
+
+            });
+
+        }
+
+
+        if (
+            !company ||
+            !String(company).trim()
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Company is required."
+
+            });
+
+        }
+
+
+        if (
+            !position ||
+            !String(position).trim()
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Position is required."
 
             });
 
@@ -46,16 +128,18 @@ const applyJob = async (req, res) => {
         const existingApplication =
             await Application.findOne({
 
-                user: userId,
+                user:
+                    userId,
 
-                company: company,
-
-                position: position,
+                jobId:
+                    jobId
 
             });
 
 
-        if (existingApplication) {
+        if (
+            existingApplication
+        ) {
 
             return res.status(400).json({
 
@@ -65,7 +149,7 @@ const applyJob = async (req, res) => {
                     "You have already applied to this job.",
 
                 application:
-                    existingApplication,
+                    existingApplication
 
             });
 
@@ -83,25 +167,31 @@ const applyJob = async (req, res) => {
                     userId,
 
                 jobId:
-                    jobId || null,
+                    jobId,
 
                 company:
-                    company,
+                    String(company).trim(),
 
                 position:
-                    position,
+                    String(position).trim(),
 
                 location:
-                    location || "",
+                    location
+                        ? String(location).trim()
+                        : "",
 
                 salary:
-                    salary || "",
+                    salary
+                        ? String(salary).trim()
+                        : "",
 
                 jobType:
-                    jobType || "",
+                    jobType
+                        ? String(jobType).trim()
+                        : "",
 
                 status:
-                    "Applied",
+                    "Applied"
 
             });
 
@@ -111,9 +201,9 @@ const applyJob = async (req, res) => {
             success: true,
 
             message:
-                "Application Submitted Successfully",
+                "Application submitted successfully.",
 
-            application,
+            application
 
         });
 
@@ -122,8 +212,44 @@ const applyJob = async (req, res) => {
 
         console.error(
             "Apply Job Error:",
-            error
+            error.message
         );
+
+
+        // =================================================
+        // DUPLICATE KEY
+        // =================================================
+
+        if (
+            error.code === 11000
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "You have already applied to this job."
+
+            });
+
+        }
+
+
+        if (
+            error instanceof mongoose.Error.ValidationError
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid application data."
+
+            });
+
+        }
 
 
         return res.status(500).json({
@@ -131,7 +257,7 @@ const applyJob = async (req, res) => {
             success: false,
 
             message:
-                error.message,
+                "Unable to submit application."
 
         });
 
@@ -151,18 +277,47 @@ const getMyApplications = async (
 
     try {
 
+        // =================================================
+        // AUTH
+        // =================================================
+
+        if (
+            !req.user ||
+            !req.user.id
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "User authentication required."
+
+            });
+
+        }
+
+
+        // =================================================
+        // GET APPLICATIONS
+        // =================================================
+
         const applications =
             await Application.find({
 
                 user:
-                    req.user.id,
+                    req.user.id
 
-            }).sort({
+            })
+                .populate(
+                    "jobId"
+                )
+                .sort({
 
-                createdAt:
-                    -1,
+                    createdAt:
+                        -1
 
-            });
+                });
 
 
         return res.status(200).json({
@@ -172,7 +327,7 @@ const getMyApplications = async (
             count:
                 applications.length,
 
-            applications,
+            applications
 
         });
 
@@ -181,7 +336,7 @@ const getMyApplications = async (
 
         console.error(
             "Get Applications Error:",
-            error
+            error.message
         );
 
 
@@ -190,7 +345,7 @@ const getMyApplications = async (
             success: false,
 
             message:
-                error.message,
+                "Unable to fetch applications."
 
         });
 
@@ -210,26 +365,79 @@ const deleteApplication = async (
 
     try {
 
+        // =================================================
+        // AUTH
+        // =================================================
+
+        if (
+            !req.user ||
+            !req.user.id
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "User authentication required."
+
+            });
+
+        }
+
+
+        // =================================================
+        // ID VALIDATION
+        // =================================================
+
+        const applicationId =
+            req.params.id;
+
+
+        if (
+            !mongoose.Types.ObjectId.isValid(
+                applicationId
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid application ID."
+
+            });
+
+        }
+
+
+        // =================================================
+        // FIND USER'S APPLICATION
+        // =================================================
+
         const application =
             await Application.findOne({
 
                 _id:
-                    req.params.id,
+                    applicationId,
 
                 user:
-                    req.user.id,
+                    req.user.id
 
             });
 
 
-        if (!application) {
+        if (
+            !application
+        ) {
 
             return res.status(404).json({
 
                 success: false,
 
                 message:
-                    "Application not found.",
+                    "Application not found."
 
             });
 
@@ -244,7 +452,7 @@ const deleteApplication = async (
             success: true,
 
             message:
-                "Application Deleted",
+                "Application deleted successfully."
 
         });
 
@@ -253,7 +461,7 @@ const deleteApplication = async (
 
         console.error(
             "Delete Application Error:",
-            error
+            error.message
         );
 
 
@@ -262,7 +470,7 @@ const deleteApplication = async (
             success: false,
 
             message:
-                error.message,
+                "Unable to delete application."
 
         });
 
@@ -282,11 +490,32 @@ const getApplicationStats = async (
 
     try {
 
+        // =================================================
+        // AUTH
+        // =================================================
+
+        if (
+            !req.user ||
+            !req.user.id
+        ) {
+
+            return res.status(401).json({
+
+                success: false,
+
+                message:
+                    "User authentication required."
+
+            });
+
+        }
+
+
         const totalApplications =
             await Application.countDocuments({
 
                 user:
-                    req.user.id,
+                    req.user.id
 
             });
 
@@ -295,7 +524,7 @@ const getApplicationStats = async (
 
             success: true,
 
-            totalApplications,
+            totalApplications
 
         });
 
@@ -304,7 +533,7 @@ const getApplicationStats = async (
 
         console.error(
             "Application Stats Error:",
-            error
+            error.message
         );
 
 
@@ -313,7 +542,7 @@ const getApplicationStats = async (
             success: false,
 
             message:
-                error.message,
+                "Unable to fetch application statistics."
 
         });
 
@@ -334,6 +563,6 @@ module.exports = {
 
     deleteApplication,
 
-    getApplicationStats,
+    getApplicationStats
 
 };

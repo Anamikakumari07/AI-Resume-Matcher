@@ -40,7 +40,7 @@ const matchResumeWithJob = async (req, res) => {
                 success: false,
 
                 message:
-                    "User authentication required.",
+                    "User authentication required."
 
             });
 
@@ -68,14 +68,17 @@ const matchResumeWithJob = async (req, res) => {
                     userId,
 
                 parsedData: {
+
                     $exists: true,
-                    $ne: null,
-                },
+
+                    $ne: null
+
+                }
 
             }).sort({
 
                 createdAt:
-                    -1,
+                    -1
 
             });
 
@@ -87,7 +90,7 @@ const matchResumeWithJob = async (req, res) => {
                 success: false,
 
                 message:
-                    "Please upload and analyze your resume before matching jobs.",
+                    "Please upload and analyze your resume before matching jobs."
 
             });
 
@@ -119,7 +122,7 @@ const matchResumeWithJob = async (req, res) => {
                 success: false,
 
                 message:
-                    "Resume information could not be extracted.",
+                    "Resume information could not be extracted."
 
             });
 
@@ -155,7 +158,7 @@ const matchResumeWithJob = async (req, res) => {
                 success: false,
 
                 message:
-                    "No jobs are available for matching.",
+                    "No jobs are available for matching."
 
             });
 
@@ -222,7 +225,7 @@ const matchResumeWithJob = async (req, res) => {
 
                 console.log(
                     "STATUS:",
-                    aiError.status
+                    getErrorStatus(aiError)
                 );
 
                 console.log(
@@ -318,7 +321,7 @@ const matchResumeWithJob = async (req, res) => {
                     matchResult.recommendations,
 
                 aiGenerated:
-                    matchResult.aiGenerated,
+                    matchResult.aiGenerated
 
             });
 
@@ -387,7 +390,7 @@ const matchResumeWithJob = async (req, res) => {
             totalMatches:
                 matchedJobs.length,
 
-            bestMatches,
+            bestMatches
 
         });
 
@@ -416,12 +419,36 @@ const matchResumeWithJob = async (req, res) => {
             success: false,
 
             message:
-                error.message ||
-                "Job matching failed.",
+                "Job matching failed."
 
         });
 
     }
+
+};
+
+
+// =====================================================
+// GET ERROR STATUS
+// =====================================================
+
+const getErrorStatus = (
+    error
+) => {
+
+    return (
+
+        error?.status ||
+
+        error?.statusCode ||
+
+        error?.code ||
+
+        error?.response?.status ||
+
+        null
+
+    );
 
 };
 
@@ -446,8 +473,11 @@ const getGeminiMatchWithRetry = async (
 
     for (
         let attempt = 0;
+
         attempt <= maxRetries;
+
         attempt++
+
     ) {
 
         try {
@@ -474,21 +504,34 @@ const getGeminiMatchWithRetry = async (
                 error;
 
 
+            const status =
+                getErrorStatus(
+                    error
+                );
+
+
             console.log(
                 "Gemini attempt failed:",
-                error.status,
+                status,
                 error.message
             );
 
 
-            // Retry temporary failures only.
+            // =================================================
+            // RETRY TEMPORARY FAILURES ONLY
+            // =================================================
 
             const retryable =
-                error.status === 429 ||
-                error.status === 500 ||
-                error.status === 502 ||
-                error.status === 503 ||
-                error.status === 504;
+                status === 429 ||
+                status === 500 ||
+                status === 502 ||
+                status === 503 ||
+                status === 504 ||
+                status === "429" ||
+                status === "500" ||
+                status === "502" ||
+                status === "503" ||
+                status === "504";
 
 
             if (
@@ -501,7 +544,9 @@ const getGeminiMatchWithRetry = async (
             }
 
 
-            // 1 sec, then 2 sec
+            // =================================================
+            // EXPONENTIAL BACKOFF
+            // =================================================
 
             const delay =
                 1000 *
@@ -546,7 +591,7 @@ const getGeminiMatch = async (
 
 You are an expert ATS resume matching system.
 
-Compare the candidate resume with the job.
+Compare the candidate resume with the job description.
 
 IMPORTANT RULES:
 
@@ -558,29 +603,20 @@ IMPORTANT RULES:
 6. Identify missing keywords.
 7. Give resume improvement suggestions.
 8. Give job-specific recommendations.
-9. Return ONLY valid JSON.
+9. Return only the requested JSON structure.
 10. Do not return markdown.
 11. Do not return code fences.
+12. Keep the reason concise and specific.
+13. Do not claim that the candidate has a skill unless it appears in the resume.
+14. Match skills semantically where appropriate, but do not fabricate experience.
 
-Return EXACTLY this JSON:
-
-{
-    "matchPercentage": 0,
-    "matchingSkills": [],
-    "missingSkills": [],
-    "missingKeywords": [],
-    "suggestions": [],
-    "recommendations": [],
-    "reason": ""
-}
-
-=========================
 CANDIDATE RESUME
 =========================
 
 ${resumeText}
 
 =========================
+
 JOB
 =========================
 
@@ -595,6 +631,10 @@ ${jobText}
     );
 
 
+    // =================================================
+    // GEMINI REQUEST
+    // =================================================
+
     const response =
         await ai.models.generateContent({
 
@@ -604,12 +644,141 @@ ${jobText}
             contents:
                 prompt,
 
+            config: {
+
+                responseMimeType:
+                    "application/json",
+
+                responseSchema: {
+
+                    type:
+                        "object",
+
+                    properties: {
+
+                        matchPercentage: {
+
+                            type:
+                                "integer",
+
+                            minimum:
+                                0,
+
+                            maximum:
+                                100
+
+                        },
+
+                        matchingSkills: {
+
+                            type:
+                                "array",
+
+                            items: {
+
+                                type:
+                                    "string"
+
+                            }
+
+                        },
+
+                        missingSkills: {
+
+                            type:
+                                "array",
+
+                            items: {
+
+                                type:
+                                    "string"
+
+                            }
+
+                        },
+
+                        missingKeywords: {
+
+                            type:
+                                "array",
+
+                            items: {
+
+                                type:
+                                    "string"
+
+                            }
+
+                        },
+
+                        suggestions: {
+
+                            type:
+                                "array",
+
+                            items: {
+
+                                type:
+                                    "string"
+
+                            }
+
+                        },
+
+                        recommendations: {
+
+                            type:
+                                "array",
+
+                            items: {
+
+                                type:
+                                    "string"
+
+                            }
+
+                        },
+
+                        reason: {
+
+                            type:
+                                "string"
+
+                        }
+
+                    },
+
+                    required: [
+
+                        "matchPercentage",
+
+                        "matchingSkills",
+
+                        "missingSkills",
+
+                        "missingKeywords",
+
+                        "suggestions",
+
+                        "recommendations",
+
+                        "reason"
+
+                    ]
+
+                }
+
+            }
+
         });
 
 
+    // =================================================
+    // GET RESPONSE TEXT
+    // =================================================
+
     let result =
-        response.text ||
-        "";
+        response?.text || "";
 
 
     if (
@@ -658,7 +827,8 @@ ${jobText}
 
     if (
         firstBrace !== -1 &&
-        lastBrace !== -1
+        lastBrace !== -1 &&
+        lastBrace > firstBrace
     ) {
 
         result =
@@ -671,7 +841,7 @@ ${jobText}
 
 
     // =================================================
-    // PARSE
+    // PARSE JSON
     // =================================================
 
     let parsed;
@@ -695,8 +865,9 @@ ${jobText}
             result
         );
 
-
-        throw error;
+        throw new Error(
+            "Gemini returned invalid JSON."
+        );
 
     }
 
@@ -725,15 +896,25 @@ ${jobText}
 
     matchPercentage =
         Math.max(
+
             0,
+
             Math.min(
+
                 100,
+
                 Math.round(
                     matchPercentage
                 )
+
             )
+
         );
 
+
+    // =================================================
+    // RETURN NORMALIZED RESULT
+    // =================================================
 
     return {
 
@@ -767,11 +948,13 @@ ${jobText}
         reason:
             typeof parsed.reason ===
             "string"
-                ? parsed.reason
+
+                ? parsed.reason.trim()
+
                 : `Your resume has a ${matchPercentage}% match for this position.`,
 
         aiGenerated:
-            true,
+            true
 
     };
 
@@ -825,8 +1008,12 @@ const getFallbackMatch = (
             );
 
 
-        if (!jobNormalized) {
+        if (
+            !jobNormalized
+        ) {
+
             continue;
+
         }
 
 
@@ -842,8 +1029,10 @@ const getFallbackMatch = (
 
 
                     return (
+
                         resumeNormalized ===
                         jobNormalized
+
                     );
 
                 }
@@ -851,7 +1040,9 @@ const getFallbackMatch = (
             );
 
 
-        if (found) {
+        if (
+            found
+        ) {
 
             if (
                 !matchingSkills.includes(
@@ -902,6 +1093,7 @@ const getFallbackMatch = (
                 (
                     matchingSkills.length /
                     jobSkills.length
+
                 ) *
 
                 100
@@ -909,9 +1101,6 @@ const getFallbackMatch = (
             );
 
     } else {
-
-        // If the job doesn't have a skills
-        // array, use keyword matching.
 
         score =
             calculateKeywordMatch(
@@ -924,11 +1113,17 @@ const getFallbackMatch = (
 
     score =
         Math.max(
+
             0,
+
             Math.min(
+
                 100,
+
                 score
+
             )
+
         );
 
 
@@ -949,7 +1144,9 @@ const getFallbackMatch = (
                     0,
                     6
                 )
-                .join(", ")}.`;
+                .join(
+                    ", "
+                )}.`;
 
     } else {
 
@@ -958,6 +1155,10 @@ const getFallbackMatch = (
 
     }
 
+
+    // =================================================
+    // RETURN
+    // =================================================
 
     return {
 
@@ -980,26 +1181,32 @@ const getFallbackMatch = (
             missingSkills.length > 0
 
                 ? [
+
                     `Consider adding relevant experience with ${missingSkills
                         .slice(
                             0,
                             5
                         )
-                        .join(", ")} if you genuinely have it.`
+                        .join(
+                            ", "
+                        )} if you genuinely have it.`
+
                 ]
 
                 : [],
 
         recommendations:
             [
+
                 "Review the job description and highlight the experience that directly matches this position."
+
             ],
 
         reason:
             reason,
 
         aiGenerated:
-            false,
+            false
 
     };
 
@@ -1036,24 +1243,30 @@ const calculateKeywordMatch = (
                 /\s+/
             )
             .map(
+
                 word =>
-                    word
-                        .replace(
-                            /[^a-z0-9+#.]/g,
-                            ""
-                        )
+
+                    word.replace(
+                        /[^a-z0-9+#.]/g,
+                        ""
+                    )
+
             )
             .filter(
+
                 word =>
                     word.length >= 3
+
             );
 
 
     const uniqueWords =
         [
+
             ...new Set(
                 jobWords
             )
+
         ];
 
 
@@ -1091,9 +1304,12 @@ const calculateKeywordMatch = (
     return Math.round(
 
         (
+
             matches /
             uniqueWords.length
+
         ) *
+
         100
 
     );
@@ -1106,7 +1322,9 @@ const calculateKeywordMatch = (
 // =====================================================
 
 const buildResumeText = (
+
     parsedData = {}
+
 ) => {
 
     let text = "";
@@ -1159,16 +1377,16 @@ Education:
                 text += `
 
 Institution:
-${education.institution || ""}
+${education?.institution || ""}
 
 Degree:
-${education.degree || ""}
+${education?.degree || ""}
 
 Dates:
-${education.dates || ""}
+${education?.dates || ""}
 
 CGPA:
-${education.cgpa || ""}
+${education?.cgpa || ""}
 
 `;
 
@@ -1196,16 +1414,16 @@ Experience:
                 text += `
 
 Title:
-${experience.title || ""}
+${experience?.title || ""}
 
 Organization:
-${experience.organization || ""}
+${experience?.organization || ""}
 
 Dates:
-${experience.dates || ""}
+${experience?.dates || ""}
 
 Description:
-${experience.description || ""}
+${experience?.description || ""}
 
 `;
 
@@ -1233,19 +1451,21 @@ Projects:
                 text += `
 
 Project:
-${project.title || ""}
+${project?.title || ""}
 
 Description:
-${project.description || ""}
+${project?.description || ""}
 
 Technologies:
 ${
     Array.isArray(
-        project.technologies
+        project?.technologies
     )
+
         ? project.technologies.join(
             ", "
         )
+
         : ""
 }
 
@@ -1287,7 +1507,9 @@ Certifications:
 // =====================================================
 
 const buildJobText = (
+
     job = {}
+
 ) => {
 
     let text = `
@@ -1329,7 +1551,9 @@ ${job.description}
         text += `
 
 Required Skills:
-${skills.join(", ")}
+${skills.join(
+    ", "
+)}
 `;
 
     }
@@ -1358,7 +1582,9 @@ ${job.requirements}
 // =====================================================
 
 const getResumeSkills = (
+
     parsedData = {}
+
 ) => {
 
     if (
@@ -1375,15 +1601,19 @@ const getResumeSkills = (
     return parsedData.skills
 
         .map(
+
             skill =>
                 String(
                     skill
                 )
+
         )
 
         .map(
+
             skill =>
                 skill.trim()
+
         )
 
         .filter(
@@ -1398,7 +1628,9 @@ const getResumeSkills = (
 // =====================================================
 
 const getJobSkills = (
+
     job = {}
+
 ) => {
 
     if (
@@ -1410,15 +1642,19 @@ const getJobSkills = (
         return job.skills
 
             .map(
+
                 skill =>
                     String(
                         skill
                     )
+
             )
 
             .map(
+
                 skill =>
                     skill.trim()
+
             )
 
             .filter(
@@ -1437,15 +1673,19 @@ const getJobSkills = (
         return job.requiredSkills
 
             .map(
+
                 skill =>
                     String(
                         skill
                     )
+
             )
 
             .map(
+
                 skill =>
                     skill.trim()
+
             )
 
             .filter(
@@ -1462,11 +1702,17 @@ const getJobSkills = (
 
         return job.skills
 
-            .split(",")
+            .split(
+                ","
+            )
+
             .map(
+
                 skill =>
                     skill.trim()
+
             )
+
             .filter(
                 Boolean
             );
@@ -1481,11 +1727,17 @@ const getJobSkills = (
 
         return job.requiredSkills
 
-            .split(",")
+            .split(
+                ","
+            )
+
             .map(
+
                 skill =>
                     skill.trim()
+
             )
+
             .filter(
                 Boolean
             );
@@ -1503,13 +1755,17 @@ const getJobSkills = (
 // =====================================================
 
 const normalizeSkill = (
+
     skill
+
 ) => {
 
     return String(
         skill || ""
     )
+
         .toLowerCase()
+
         .replace(
             /[^a-z0-9+#.]/g,
             ""
@@ -1523,7 +1779,9 @@ const normalizeSkill = (
 // =====================================================
 
 const normalizeArray = (
+
     value
+
 ) => {
 
     if (
@@ -1538,12 +1796,16 @@ const normalizeArray = (
 
 
     return value
+
         .map(
+
             item =>
                 String(
                     item
                 ).trim()
+
         )
+
         .filter(
             Boolean
         );
@@ -1556,15 +1818,23 @@ const normalizeArray = (
 // =====================================================
 
 const sleep = (
+
     milliseconds
+
 ) => {
 
     return new Promise(
+
         resolve =>
+
             setTimeout(
+
                 resolve,
+
                 milliseconds
+
             )
+
     );
 
 };
@@ -1576,6 +1846,6 @@ const sleep = (
 
 module.exports = {
 
-    matchResumeWithJob,
+    matchResumeWithJob
 
 };

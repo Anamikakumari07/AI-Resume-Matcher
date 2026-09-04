@@ -4,25 +4,35 @@ import toast from "react-hot-toast";
 import Layout from "../components/Layout";
 import ATSChart from "../components/ATSChart";
 
+
 function Dashboard() {
 
     const [data, setData] = useState({
+
         resumes: [],
+
         readinessScore: 0,
+
         suggestions: [],
+
     });
+
 
     const [savedJobCount, setSavedJobCount] =
         useState(0);
 
+
     const [applicationCount, setApplicationCount] =
         useState(0);
+
 
     const [loading, setLoading] =
         useState(true);
 
+
     const [statsLoading, setStatsLoading] =
         useState(true);
+
 
     const hasFetched =
         useRef(false);
@@ -34,11 +44,18 @@ function Dashboard() {
 
     useEffect(() => {
 
-        if (hasFetched.current) {
+        if (
+            hasFetched.current
+        ) {
+
             return;
+
         }
 
-        hasFetched.current = true;
+
+        hasFetched.current =
+            true;
+
 
         fetchDashboard();
 
@@ -49,183 +66,265 @@ function Dashboard() {
     // FETCH DASHBOARD
     // =====================================================
 
-    const fetchDashboard = async () => {
-
-        try {
-
-            setLoading(true);
-
-            setStatsLoading(true);
-
-
-            // =================================================
-            // RESUME DATA
-            // =================================================
-
-            const resumeResponse =
-                await API.get(
-                    "/resume/my-resumes"
-                );
-
-
-            console.log(
-                "Dashboard Resume Response:",
-                resumeResponse.data
-            );
-
-
-            setData({
-                resumes:
-                    Array.isArray(
-                        resumeResponse.data?.resumes
-                    )
-                        ? resumeResponse.data.resumes
-                        : [],
-
-                readinessScore:
-                    Number(
-                        resumeResponse.data?.readinessScore
-                    ) || 0,
-
-                suggestions:
-                    Array.isArray(
-                        resumeResponse.data?.suggestions
-                    )
-                        ? resumeResponse.data.suggestions
-                        : [],
-            });
-
-
-            // =================================================
-            // SAVED JOBS
-            // =================================================
+    const fetchDashboard =
+        async () => {
 
             try {
 
-                const savedResponse =
-                    await API.get(
+                setLoading(true);
+
+                setStatsLoading(true);
+
+
+                // =================================================
+                // FETCH ALL DASHBOARD DATA IN PARALLEL
+                // =================================================
+
+                const [
+
+                    resumeResult,
+
+                    savedResult,
+
+                    applicationResult
+
+                ] = await Promise.allSettled([
+
+                    API.get(
+                        "/resume/my-resumes"
+                    ),
+
+                    API.get(
                         "/saved-jobs"
+                    ),
+
+                    API.get(
+                        "/applications/stats"
+                    )
+
+                ]);
+
+
+                // =================================================
+                // RESUME DATA
+                // =================================================
+
+                if (
+                    resumeResult.status ===
+                    "fulfilled"
+                ) {
+
+                    const resumeResponse =
+                        resumeResult.value;
+
+
+                    setData({
+
+                        resumes:
+
+                            Array.isArray(
+                                resumeResponse.data?.resumes
+                            )
+
+                                ? resumeResponse.data.resumes
+
+                                : [],
+
+
+                        readinessScore:
+
+                            Number(
+                                resumeResponse.data?.readinessScore
+                            ) || 0,
+
+
+                        suggestions:
+
+                            Array.isArray(
+                                resumeResponse.data?.suggestions
+                            )
+
+                                ? resumeResponse.data.suggestions
+
+                                : [],
+
+                    });
+
+                } else {
+
+                    console.error(
+                        "Dashboard Resume Error:",
+                        resumeResult.reason
                     );
 
 
-                console.log(
-                    "Dashboard Saved Jobs Response:",
-                    savedResponse.data
-                );
+                    setData({
+
+                        resumes: [],
+
+                        readinessScore: 0,
+
+                        suggestions: [],
+
+                    });
 
 
-                setSavedJobCount(
-                    Number(
-                        savedResponse.data?.count
-                    ) ||
-                    (
-                        Array.isArray(
-                            savedResponse.data?.savedJobs
+                    const resumeError =
+                        resumeResult.reason;
+
+
+                    toast.error(
+
+                        resumeError
+                            ?.response
+                            ?.data
+                            ?.message ||
+
+                        "Unable to load resume data."
+
+                    );
+
+                }
+
+
+                // =================================================
+                // SAVED JOBS
+                // =================================================
+
+                if (
+                    savedResult.status ===
+                    "fulfilled"
+                ) {
+
+                    const savedResponse =
+                        savedResult.value;
+
+
+                    const savedCount =
+                        Number(
+                            savedResponse.data?.count
+                        );
+
+
+                    if (
+                        Number.isFinite(
+                            savedCount
                         )
-                            ? savedResponse.data.savedJobs.length
+                    ) {
+
+                        setSavedJobCount(
+
+                            Math.max(
+                                0,
+                                savedCount
+                            )
+
+                        );
+
+                    } else {
+
+                        setSavedJobCount(
+
+                            Array.isArray(
+                                savedResponse.data?.savedJobs
+                            )
+
+                                ? savedResponse.data.savedJobs.length
+
+                                : 0
+
+                        );
+
+                    }
+
+                } else {
+
+                    console.error(
+                        "Dashboard Saved Jobs Error:",
+                        savedResult.reason
+                    );
+
+
+                    setSavedJobCount(0);
+
+                }
+
+
+                // =================================================
+                // APPLICATIONS
+                // =================================================
+
+                if (
+                    applicationResult.status ===
+                    "fulfilled"
+                ) {
+
+                    const applicationResponse =
+                        applicationResult.value;
+
+
+                    const totalApplications =
+                        Number(
+                            applicationResponse.data
+                                ?.totalApplications
+                        );
+
+
+                    setApplicationCount(
+
+                        Number.isFinite(
+                            totalApplications
+                        )
+
+                            ? Math.max(
+                                0,
+                                totalApplications
+                            )
+
                             : 0
-                    )
+
+                    );
+
+                } else {
+
+                    console.error(
+                        "Dashboard Applications Error:",
+                        applicationResult.reason
+                    );
+
+
+                    setApplicationCount(0);
+
+                }
+
+
+            } catch (error) {
+
+                console.error(
+                    "Dashboard Error:",
+                    error
                 );
 
 
-            } catch (savedError) {
+                toast.error(
 
-                console.log(
-                    "Dashboard Saved Jobs Error:",
-                    savedError
+                    error.response
+                        ?.data
+                        ?.message ||
+
+                    "Unable to load dashboard."
+
                 );
 
-                setSavedJobCount(0);
+            } finally {
+
+                setLoading(false);
+
+                setStatsLoading(false);
 
             }
 
-
-            // =================================================
-            // APPLICATIONS
-            // =================================================
-
-            try {
-
-                const applicationResponse =
-    await API.get("/applications/stats");
-
-console.log(
-    "Dashboard Applications Response:",
-    applicationResponse.data
-);
-
-setApplicationCount(
-    Number(
-        applicationResponse.data?.totalApplications
-    ) || 0
-);
-
-
-                console.log(
-                    "Dashboard Applications Response:",
-                    applicationResponse.data
-                );
-
-
-                const applications =
-                    applicationResponse.data?.applications;
-
-
-                setApplicationCount(
-
-                    Number(
-                        applicationResponse.data?.count
-                    ) ||
-
-                    (
-                        Array.isArray(
-                            applications
-                        )
-                            ? applications.length
-                            : 0
-                    )
-
-                );
-
-
-            } catch (applicationError) {
-
-                console.log(
-                    "Dashboard Applications Error:",
-                    applicationError
-                );
-
-                // If your application route is not available yet,
-                // keep the Dashboard working instead of crashing.
-
-                setApplicationCount(0);
-
-            }
-
-
-        } catch (error) {
-
-            console.log(
-                "Dashboard Error:",
-                error
-            );
-
-
-            toast.error(
-                error.response?.data?.message ||
-                "Unable to load dashboard"
-            );
-
-
-        } finally {
-
-            setLoading(false);
-
-            setStatsLoading(false);
-
-        }
-
-    };
+        };
 
 
     // =====================================================
@@ -234,7 +333,9 @@ setApplicationCount(
 
     const latestResume =
         data.resumes.length > 0
+
             ? data.resumes[0]
+
             : null;
 
 
@@ -244,9 +345,11 @@ setApplicationCount(
 
     const latestATSScore =
         latestResume
+
             ? Number(
                 latestResume.atsScore
             ) || 0
+
             : 0;
 
 
@@ -254,114 +357,117 @@ setApplicationCount(
     // RESUME STRENGTH
     // =====================================================
 
-    const getStrength = () => {
+    const getStrength =
+        () => {
 
-        if (
-            data.readinessScore >= 90
-        ) {
+            if (
+                data.readinessScore >= 90
+            ) {
 
-            return "Excellent";
+                return "Excellent";
 
-        }
-
-
-        if (
-            data.readinessScore >= 75
-        ) {
-
-            return "Good";
-
-        }
+            }
 
 
-        if (
-            data.readinessScore >= 50
-        ) {
+            if (
+                data.readinessScore >= 75
+            ) {
 
-            return "Average";
+                return "Good";
 
-        }
+            }
 
 
-        return "Needs Work";
+            if (
+                data.readinessScore >= 50
+            ) {
 
-    };
+                return "Average";
+
+            }
+
+
+            return "Needs Work";
+
+        };
 
 
     // =====================================================
     // READINESS COLOR
     // =====================================================
 
-    const getReadinessColor = () => {
+    const getReadinessColor =
+        () => {
 
-        if (
-            data.readinessScore >= 90
-        ) {
+            if (
+                data.readinessScore >= 90
+            ) {
 
-            return "text-green-600";
+                return "text-green-600";
 
-        }
-
-
-        if (
-            data.readinessScore >= 75
-        ) {
-
-            return "text-blue-600";
-
-        }
+            }
 
 
-        if (
-            data.readinessScore >= 50
-        ) {
+            if (
+                data.readinessScore >= 75
+            ) {
 
-            return "text-yellow-600";
+                return "text-blue-600";
 
-        }
+            }
 
 
-        return "text-red-600";
+            if (
+                data.readinessScore >= 50
+            ) {
 
-    };
+                return "text-yellow-600";
+
+            }
+
+
+            return "text-red-600";
+
+        };
 
 
     // =====================================================
     // ATS COLOR
     // =====================================================
 
-    const getATSColor = () => {
+    const getATSColor =
+        () => {
 
-        if (
-            latestATSScore >= 80
-        ) {
+            if (
+                latestATSScore >= 80
+            ) {
 
-            return "text-green-600";
+                return "text-green-600";
 
-        }
-
-
-        if (
-            latestATSScore >= 60
-        ) {
-
-            return "text-yellow-600";
-
-        }
+            }
 
 
-        if (
-            latestATSScore > 0
-        ) {
+            if (
+                latestATSScore >= 60
+            ) {
 
-            return "text-red-600";
+                return "text-yellow-600";
 
-        }
+            }
 
 
-        return "text-gray-400";
+            if (
+                latestATSScore > 0
+            ) {
 
-    };
+                return "text-red-600";
+
+            }
+
+
+            return "text-gray-400";
+
+        };
 
 
     // =====================================================
@@ -374,21 +480,25 @@ setApplicationCount(
 
             <Layout>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+                <div className="min-h-[60vh] flex items-center justify-center">
 
-                    <div className="text-5xl mb-4">
-                        📊
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center w-full max-w-md">
+
+                        <div className="text-5xl mb-4">
+                            📊
+                        </div>
+
+
+                        <h2 className="text-xl font-semibold text-gray-700">
+                            Loading your dashboard...
+                        </h2>
+
+
+                        <p className="text-gray-500 mt-2">
+                            Fetching your resume and application statistics.
+                        </p>
+
                     </div>
-
-
-                    <h2 className="text-xl font-semibold text-gray-700">
-                        Loading your dashboard...
-                    </h2>
-
-
-                    <p className="text-gray-500 mt-2">
-                        Fetching your resume and application statistics.
-                    </p>
 
                 </div>
 
@@ -486,8 +596,12 @@ setApplicationCount(
                             >
 
                                 {latestATSScore > 0
+
                                     ? `${latestATSScore}%`
-                                    : "N/A"}
+
+                                    : "N/A"
+
+                                }
 
                             </h2>
 
@@ -772,6 +886,7 @@ setApplicationCount(
                     <div className="space-y-3">
 
                         {data.suggestions.map(
+
                             (
                                 item,
                                 index
@@ -796,6 +911,7 @@ setApplicationCount(
                                 </div>
 
                             )
+
                         )}
 
                     </div>
@@ -810,5 +926,6 @@ setApplicationCount(
     );
 
 }
+
 
 export default Dashboard;

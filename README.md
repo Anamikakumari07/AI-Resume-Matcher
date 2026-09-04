@@ -116,4 +116,15 @@ AI-Resume-Matcher/
 │   ├── server.js
 │   └── package.json
 │
+├── screenshots/
+│   ├── login.png
+│   ├── dashboard.png
+│   ├── upload-resume.png
+│   ├── resume-analysis.png
+│   ├── job-matches.png
+│   ├── saved-jobs.png
+│   ├── applications.png
+│   ├── profile.png
+│   └── admin-dashboard.png
+│
 └── README.md

@@ -1,45 +1,68 @@
+const mongoose = require("mongoose");
+
 const Resume = require("../models/Resume");
-const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const ai = require("../config/gemini");
+const cloudinary = require("../config/cloudinary");
 
 
 // =====================================================
-// CALCULATE ATS SCORE
+// GEMINI MODEL
 // =====================================================
 
-const calculateATSScore = (parsedResume) => {
+const GEMINI_MODEL =
+    process.env.GEMINI_MODEL ||
+    "gemini-3.5-flash";
+
+
+// =====================================================
+// ATS SCORE
+// =====================================================
+//
+// This score measures resume completeness and quality.
+// It is NOT a job-specific keyword match.
+//
+// Maximum = 100
+//
+// Contact       = 15
+// Skills        = 20
+// Education     = 15
+// Experience    = 20
+// Projects      = 20
+// Certifications= 10
+// =====================================================
+
+const calculateATSScore = (
+    parsedResume = {}
+) => {
 
     let score = 0;
 
 
     // =================================================
-    // CONTACT INFORMATION
+    // CONTACT INFORMATION - 15
     // =================================================
 
     if (
-        parsedResume.name &&
-        String(parsedResume.name).trim()
+        hasText(parsedResume.name)
     ) {
 
-        score += 10;
+        score += 5;
 
     }
 
 
     if (
-        parsedResume.email &&
-        String(parsedResume.email).trim()
+        hasValidEmail(parsedResume.email)
     ) {
 
-        score += 10;
+        score += 5;
 
     }
 
 
     if (
-        parsedResume.phone &&
-        String(parsedResume.phone).trim()
+        hasText(parsedResume.phone)
     ) {
 
         score += 5;
@@ -48,42 +71,138 @@ const calculateATSScore = (parsedResume) => {
 
 
     // =================================================
-    // SKILLS
+    // SKILLS - 20
     // =================================================
 
+    const skills =
+        Array.isArray(parsedResume.skills)
+            ? parsedResume.skills.filter(
+                skill => hasText(skill)
+            )
+            : [];
+
+
+    const skillCount =
+        new Set(
+            skills.map(
+                skill =>
+                    String(skill)
+                        .trim()
+                        .toLowerCase()
+            )
+        ).size;
+
+
     if (
-        Array.isArray(
-            parsedResume.skills
-        )
+        skillCount >= 10
     ) {
 
-        const skillCount =
-            parsedResume.skills.length;
+        score += 20;
+
+    } else if (
+        skillCount >= 7
+    ) {
+
+        score += 17;
+
+    } else if (
+        skillCount >= 5
+    ) {
+
+        score += 14;
+
+    } else if (
+        skillCount >= 3
+    ) {
+
+        score += 10;
+
+    } else if (
+        skillCount >= 1
+    ) {
+
+        score += 5;
+
+    }
+
+
+    // =================================================
+    // EDUCATION - 15
+    // =================================================
+
+    const education =
+        Array.isArray(parsedResume.education)
+            ? parsedResume.education
+            : [];
+
+
+    if (
+        education.length > 0
+    ) {
+
+        score += 7;
+
+        const completeEducation =
+            education.filter(
+
+                item =>
+
+                    hasText(
+                        item?.institution
+                    ) &&
+
+                    hasText(
+                        item?.degree
+                    )
+
+            );
 
 
         if (
-            skillCount >= 10
+            completeEducation.length > 0
         ) {
 
-            score += 25;
+            score += 4;
 
-        } else if (
-            skillCount >= 5
+        }
+
+
+        const educationWithDates =
+            education.filter(
+
+                item =>
+                    hasText(
+                        item?.dates
+                    )
+
+            );
+
+
+        if (
+            educationWithDates.length > 0
         ) {
 
-            score += 20;
+            score += 2;
 
-        } else if (
-            skillCount >= 3
+        }
+
+
+        const educationWithGrade =
+            education.filter(
+
+                item =>
+                    hasText(
+                        item?.cgpa
+                    )
+
+            );
+
+
+        if (
+            educationWithGrade.length > 0
         ) {
 
-            score += 15;
-
-        } else if (
-            skillCount > 0
-        ) {
-
-            score += 10;
+            score += 2;
 
         }
 
@@ -91,92 +210,262 @@ const calculateATSScore = (parsedResume) => {
 
 
     // =================================================
-    // EDUCATION
+    // EXPERIENCE - 20
     // =================================================
 
+    const experience =
+        Array.isArray(parsedResume.experience)
+            ? parsedResume.experience
+            : [];
+
+
     if (
-        Array.isArray(
-            parsedResume.education
-        ) &&
-        parsedResume.education.length > 0
+        experience.length > 0
     ) {
 
-        score += 15;
+        score += 6;
+
+    }
+
+
+    const completeExperience =
+        experience.filter(
+
+            item =>
+
+                hasText(
+                    item?.title
+                ) &&
+
+                hasText(
+                    item?.organization
+                )
+
+        );
+
+
+    if (
+        completeExperience.length > 0
+    ) {
+
+        score += 4;
+
+    }
+
+
+    const experienceWithDates =
+        experience.filter(
+
+            item =>
+                hasText(
+                    item?.dates
+                )
+
+        );
+
+
+    if (
+        experienceWithDates.length > 0
+    ) {
+
+        score += 3;
+
+    }
+
+
+    const experienceWithDescription =
+        experience.filter(
+
+            item =>
+
+                hasText(
+                    item?.description
+                )
+
+        );
+
+
+    if (
+        experienceWithDescription.length > 0
+    ) {
+
+        score += 4;
+
+    }
+
+
+    const strongExperienceDescriptions =
+        experience.filter(
+
+            item => {
+
+                const description =
+                    String(
+                        item?.description || ""
+                    ).trim();
+
+                return (
+                    description.length >= 80
+                );
+
+            }
+
+        );
+
+
+    if (
+        strongExperienceDescriptions.length > 0
+    ) {
+
+        score += 3;
 
     }
 
 
     // =================================================
-    // EXPERIENCE
+    // PROJECTS - 20
     // =================================================
 
+    const projects =
+        Array.isArray(parsedResume.projects)
+            ? parsedResume.projects
+            : [];
+
+
     if (
-        Array.isArray(
-            parsedResume.experience
-        )
+        projects.length > 0
     ) {
 
-        const experienceCount =
-            parsedResume.experience.length;
+        score += 5;
+
+    }
 
 
-        if (
-            experienceCount >= 2
-        ) {
+    if (
+        projects.length >= 2
+    ) {
 
-            score += 15;
+        score += 3;
 
-        } else if (
-            experienceCount === 1
-        ) {
+    }
 
-            score += 10;
 
-        }
+    const completeProjects =
+        projects.filter(
+
+            item =>
+
+                hasText(
+                    item?.title
+                ) &&
+
+                hasText(
+                    item?.description
+                )
+
+        );
+
+
+    if (
+        completeProjects.length > 0
+    ) {
+
+        score += 5;
+
+    }
+
+
+    const projectsWithTechnologies =
+        projects.filter(
+
+            item =>
+
+                Array.isArray(
+                    item?.technologies
+                ) &&
+
+                item.technologies.length > 0
+
+        );
+
+
+    if (
+        projectsWithTechnologies.length > 0
+    ) {
+
+        score += 4;
+
+    }
+
+
+    const strongProjects =
+        projects.filter(
+
+            item => {
+
+                const description =
+                    String(
+                        item?.description || ""
+                    ).trim();
+
+
+                const technologies =
+                    Array.isArray(
+                        item?.technologies
+                    )
+                        ? item.technologies
+                        : [];
+
+
+                return (
+
+                    description.length >= 80 &&
+                    technologies.length >= 2
+
+                );
+
+            }
+
+        );
+
+
+    if (
+        strongProjects.length > 0
+    ) {
+
+        score += 3;
 
     }
 
 
     // =================================================
-    // PROJECTS
+    // CERTIFICATIONS - 10
     // =================================================
 
-    if (
-        Array.isArray(
-            parsedResume.projects
-        )
-    ) {
-
-        const projectCount =
-            parsedResume.projects.length;
-
-
-        if (
-            projectCount >= 2
-        ) {
-
-            score += 10;
-
-        } else if (
-            projectCount === 1
-        ) {
-
-            score += 5;
-
-        }
-
-    }
-
-
-    // =================================================
-    // CERTIFICATIONS
-    // =================================================
-
-    if (
+    const certifications =
         Array.isArray(
             parsedResume.certifications
-        ) &&
-        parsedResume.certifications.length > 0
+        )
+
+            ? parsedResume.certifications.filter(
+                certificate =>
+                    hasText(certificate)
+            )
+
+            : [];
+
+
+    if (
+        certifications.length > 0
+    ) {
+
+        score += 5;
+
+    }
+
+
+    if (
+        certifications.length >= 2
     ) {
 
         score += 5;
@@ -189,12 +478,148 @@ const calculateATSScore = (parsedResume) => {
     // =================================================
 
     return Math.min(
+
         100,
+
         Math.max(
             0,
-            score
+            Math.round(score)
         )
+
     );
+
+};
+
+
+// =====================================================
+// UPLOAD BUFFER TO CLOUDINARY
+// =====================================================
+
+const uploadToCloudinary = (
+    buffer,
+    originalName
+) => {
+
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
+
+            const safeName =
+                String(
+                    originalName ||
+                    "resume"
+                )
+                    .replace(
+                        /\.pdf$/i,
+                        ""
+                    )
+                    .replace(
+                        /[^a-zA-Z0-9_-]/g,
+                        "-"
+                    )
+                    .slice(
+                        0,
+                        80
+                    );
+
+
+            const publicId =
+                `${Date.now()}-${safeName || "resume"}`;
+
+
+            const uploadStream =
+                cloudinary.uploader.upload_stream(
+
+                    {
+                        resource_type:
+                            "raw",
+
+                        folder:
+                            "ai-resume-matcher/resumes",
+
+                        public_id:
+                            publicId
+
+                    },
+
+                    (
+                        error,
+                        result
+                    ) => {
+
+                        if (error) {
+
+                            reject(
+                                error
+                            );
+
+                            return;
+
+                        }
+
+
+                        resolve(
+                            result
+                        );
+
+                    }
+
+                );
+
+
+            uploadStream.end(
+                buffer
+            );
+
+        }
+    );
+
+};
+
+
+// =====================================================
+// DELETE CLOUDINARY FILE
+// =====================================================
+
+const deleteFromCloudinary = async (
+    publicId
+) => {
+
+    if (
+        !publicId
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        await cloudinary.uploader.destroy(
+
+            publicId,
+
+            {
+                resource_type:
+                    "raw",
+
+                invalidate:
+                    true
+
+            }
+
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Cloudinary delete failed."
+        );
+
+    }
 
 };
 
@@ -203,19 +628,16 @@ const calculateATSScore = (parsedResume) => {
 // UPLOAD RESUME
 // =====================================================
 
-const uploadResume = async (req, res) => {
+const uploadResume = async (
+    req,
+    res
+) => {
+
+    let cloudinaryPublicId =
+        null;
+
 
     try {
-
-        console.log("=================================");
-        console.log("RESUME UPLOAD");
-        console.log("USER:", req.user?.id);
-        console.log(
-            "FILE:",
-            req.file?.originalname
-        );
-        console.log("=================================");
-
 
         // =================================================
         // AUTH CHECK
@@ -228,10 +650,11 @@ const uploadResume = async (req, res) => {
 
             return res.status(401).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "User authentication required.",
+                    "User authentication required."
 
             });
 
@@ -242,14 +665,17 @@ const uploadResume = async (req, res) => {
         // FILE CHECK
         // =================================================
 
-        if (!req.file) {
+        if (
+            !req.file
+        ) {
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "No Resume Uploaded.",
+                    "No resume uploaded."
 
             });
 
@@ -257,7 +683,112 @@ const uploadResume = async (req, res) => {
 
 
         // =================================================
-        // CREATE RESUME
+        // MIME TYPE
+        // =================================================
+
+        if (
+            req.file.mimetype !==
+            "application/pdf"
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Only PDF files are allowed."
+
+            });
+
+        }
+
+
+        // =================================================
+        // BUFFER
+        // =================================================
+
+        if (
+            !req.file.buffer ||
+            !Buffer.isBuffer(
+                req.file.buffer
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Uploaded file data is unavailable."
+
+            });
+
+        }
+
+
+        // =================================================
+        // SIZE
+        // =================================================
+
+        if (
+            req.file.size >
+            5 * 1024 * 1024
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Resume file must be 5 MB or smaller."
+
+            });
+
+        }
+
+
+        // =================================================
+        // CLOUDINARY UPLOAD
+        // =================================================
+
+        const cloudinaryResult =
+            await uploadToCloudinary(
+
+                req.file.buffer,
+
+                req.file.originalname
+
+            );
+
+
+        if (
+            !cloudinaryResult ||
+            !cloudinaryResult.secure_url ||
+            !cloudinaryResult.public_id
+        ) {
+
+            return res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Resume could not be uploaded to cloud storage."
+
+            });
+
+        }
+
+
+        cloudinaryPublicId =
+            cloudinaryResult.public_id;
+
+
+        // =================================================
+        // DATABASE
         // =================================================
 
         const resume =
@@ -267,42 +798,38 @@ const uploadResume = async (req, res) => {
                     req.user.id,
 
                 filename:
-                    req.file.originalname,
+                    String(
+                        req.file.originalname ||
+                        "resume.pdf"
+                    ).slice(
+                        0,
+                        255
+                    ),
 
                 resumeUrl:
-                    req.file.filename,
+                    cloudinaryResult.secure_url,
+
+                cloudinaryPublicId:
+                    cloudinaryResult.public_id,
 
                 atsScore:
                     0,
 
                 parsedData:
-                    null,
+                    null
 
             });
 
 
-        console.log("=================================");
-        console.log("RESUME CREATED");
-        console.log("ID:", resume._id);
-        console.log(
-            "USER:",
-            resume.user
-        );
-        console.log(
-            "FILENAME:",
-            resume.filename
-        );
-        console.log("=================================");
-
-
         return res.status(201).json({
 
-            success: true,
+            success:
+                true,
 
             message:
-                "Resume Uploaded Successfully",
+                "Resume uploaded successfully.",
 
-            resume,
+            resume
 
         });
 
@@ -311,16 +838,50 @@ const uploadResume = async (req, res) => {
 
         console.error(
             "Upload Resume Error:",
-            error
+            error.message
         );
+
+
+        // =================================================
+        // CLEANUP CLOUDINARY
+        // =================================================
+
+        if (
+            cloudinaryPublicId
+        ) {
+
+            await deleteFromCloudinary(
+                cloudinaryPublicId
+            );
+
+        }
+
+
+        if (
+            error instanceof
+            mongoose.Error.ValidationError
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid resume data."
+
+            });
+
+        }
 
 
         return res.status(500).json({
 
-            success: false,
+            success:
+                false,
 
             message:
-                error.message,
+                "Unable to upload resume."
 
         });
 
@@ -340,18 +901,8 @@ const parseResumeWithAI = async (
 
     try {
 
-        console.log("=================================");
-        console.log("RESUME PARSE STARTED");
-        console.log("USER:", req.user?.id);
-        console.log(
-            "FILE:",
-            req.file?.originalname
-        );
-        console.log("=================================");
-
-
         // =================================================
-        // AUTH CHECK
+        // AUTH
         // =================================================
 
         if (
@@ -361,10 +912,11 @@ const parseResumeWithAI = async (
 
             return res.status(401).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "User authentication required.",
+                    "User authentication required."
 
             });
 
@@ -372,180 +924,192 @@ const parseResumeWithAI = async (
 
 
         // =================================================
-        // FILE CHECK
+        // FILE
         // =================================================
 
-        if (!req.file) {
+        if (
+            !req.file
+        ) {
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "No Resume Uploaded.",
+                    "No resume uploaded."
 
             });
 
         }
-
-
-        // =================================================
-        // FIND USER'S LATEST RESUME RECORD
-        // =================================================
-
-        let resumeRecord =
-            await Resume.findOne({
-
-                user:
-                    req.user.id,
-
-            }).sort({
-
-                createdAt:
-                    -1,
-
-            });
-
-
-        // =================================================
-        // FALLBACK USING ORIGINAL FILE NAME
-        // =================================================
-
-        if (!resumeRecord) {
-
-            resumeRecord =
-                await Resume.findOne({
-
-                    user:
-                        req.user.id,
-
-                    filename:
-                        req.file.originalname,
-
-                }).sort({
-
-                    createdAt:
-                        -1,
-
-                });
-
-        }
-
-
-        // =================================================
-        // RESUME RECORD CHECK
-        // =================================================
-
-        if (!resumeRecord) {
-
-            console.log(
-                "RESUME RECORD NOT FOUND"
-            );
-
-
-            return res.status(404).json({
-
-                success: false,
-
-                message:
-                    "Resume record not found. Please upload the resume first.",
-
-            });
-
-        }
-
-
-        console.log("=================================");
-        console.log(
-            "RESUME RECORD FOUND"
-        );
-        console.log(
-            "RESUME ID:",
-            resumeRecord._id
-        );
-        console.log(
-            "DB USER:",
-            resumeRecord.user
-        );
-        console.log(
-            "DB FILE:",
-            resumeRecord.filename
-        );
-        console.log("=================================");
-
-
-        // =================================================
-        // READ FILE
-        // =================================================
-
-        const filePath =
-            req.file.path;
 
 
         if (
-            !fs.existsSync(
-                filePath
+            req.file.mimetype !==
+            "application/pdf"
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Only PDF files are allowed."
+
+            });
+
+        }
+
+
+        if (
+            !req.file.buffer ||
+            !Buffer.isBuffer(
+                req.file.buffer
             )
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Uploaded resume data is unavailable."
+
+            });
+
+        }
+
+
+        // =================================================
+        // SIZE
+        // =================================================
+
+        if (
+            req.file.size >
+            5 * 1024 * 1024
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Resume file must be 5 MB or smaller."
+
+            });
+
+        }
+
+
+        // =================================================
+        // RESUME ID
+        // =================================================
+
+        const resumeId =
+            req.params.resumeId ||
+            req.body.resumeId;
+
+
+        if (
+            !resumeId
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Resume ID is required."
+
+            });
+
+        }
+
+
+        if (
+            !mongoose.Types.ObjectId.isValid(
+                resumeId
+            )
+        ) {
+
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid resume ID."
+
+            });
+
+        }
+
+
+        // =================================================
+        // FIND USER'S RESUME
+        // =================================================
+
+        const resumeRecord =
+            await Resume.findOne({
+
+                _id:
+                    resumeId,
+
+                user:
+                    req.user.id
+
+            });
+
+
+        if (
+            !resumeRecord
         ) {
 
             return res.status(404).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "Uploaded resume file not found.",
+                    "Resume record not found."
 
             });
 
         }
 
 
-        const dataBuffer =
-            fs.readFileSync(
-                filePath
-            );
-
-
         // =================================================
-        // EXTRACT PDF TEXT
+        // PARSE PDF
         // =================================================
 
         const pdfData =
             await pdfParse(
-                dataBuffer
+                req.file.buffer
             );
 
 
         const resumeText =
-            pdfData.text ||
-            "";
+            String(
+                pdfData?.text ||
+                ""
+            ).trim();
 
-
-        console.log("=================================");
-        console.log(
-            "EXTRACTED RESUME TEXT"
-        );
-        console.log("=================================");
-        console.log(
-            resumeText
-        );
-        console.log("=================================");
-
-
-        // =================================================
-        // TEXT CHECK
-        // =================================================
 
         if (
-            !resumeText.trim()
+            !resumeText
         ) {
 
             return res.status(400).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "Could not extract text from resume.",
+                    "Could not extract text from resume."
 
             });
 
@@ -560,9 +1124,9 @@ const parseResumeWithAI = async (
 
 You are an expert professional resume parser.
 
-Analyze the COMPLETE resume text below.
+Analyze the complete resume text below.
 
-Extract only information that is actually present.
+Extract ONLY information actually present.
 
 IMPORTANT RULES:
 
@@ -590,67 +1154,20 @@ IMPORTANT RULES:
 22. Extract project descriptions.
 23. Extract project technologies.
 24. Extract all certifications.
-25. If information is not present, return an empty string or empty array.
+25. If information is missing, return an empty string or empty array.
+26. Return only JSON.
+27. Do not return markdown.
+28. Do not return code fences.
+29. Preserve the meaning of the original resume.
+30. Do not create skills, jobs, projects or certifications that do not appear in the resume.
 
-Return ONLY valid JSON.
-
-Do NOT return markdown.
-
-Do NOT return code fences.
-
-Use EXACTLY this structure:
-
-{
-    "name": "",
-    "email": "",
-    "phone": "",
-    "skills": [],
-    "education": [
-        {
-            "institution": "",
-            "degree": "",
-            "dates": "",
-            "cgpa": ""
-        }
-    ],
-    "experience": [
-        {
-            "title": "",
-            "organization": "",
-            "dates": "",
-            "description": ""
-        }
-    ],
-    "projects": [
-        {
-            "title": "",
-            "description": "",
-            "technologies": []
-        }
-    ],
-    "certifications": []
-}
+Return exactly the requested JSON structure.
 
 COMPLETE RESUME TEXT:
 
 ${resumeText}
 
 `;
-
-
-        // =================================================
-        // GEMINI MODEL
-        // =================================================
-
-        const model =
-            process.env.GEMINI_MODEL ||
-            "gemini-3.6-flash";
-
-
-        console.log(
-            "GEMINI MODEL:",
-            model
-        );
 
 
         // =================================================
@@ -666,122 +1183,367 @@ ${resumeText}
                 await ai.models.generateContent({
 
                     model:
-                        model,
+                        GEMINI_MODEL,
 
                     contents:
                         prompt,
+
+                    config: {
+
+                        responseMimeType:
+                            "application/json",
+
+                        responseSchema: {
+
+                            type:
+                                "object",
+
+                            properties: {
+
+                                name: {
+
+                                    type:
+                                        "string"
+
+                                },
+
+                                email: {
+
+                                    type:
+                                        "string"
+
+                                },
+
+                                phone: {
+
+                                    type:
+                                        "string"
+
+                                },
+
+                                skills: {
+
+                                    type:
+                                        "array",
+
+                                    items: {
+
+                                        type:
+                                            "string"
+
+                                    }
+
+                                },
+
+                                education: {
+
+                                    type:
+                                        "array",
+
+                                    items: {
+
+                                        type:
+                                            "object",
+
+                                        properties: {
+
+                                            institution: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            degree: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            dates: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            cgpa: {
+
+                                                type:
+                                                    "string"
+
+                                            }
+
+                                        },
+
+                                        required: [
+
+                                            "institution",
+
+                                            "degree",
+
+                                            "dates",
+
+                                            "cgpa"
+
+                                        ]
+
+                                    }
+
+                                },
+
+                                experience: {
+
+                                    type:
+                                        "array",
+
+                                    items: {
+
+                                        type:
+                                            "object",
+
+                                        properties: {
+
+                                            title: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            organization: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            dates: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            description: {
+
+                                                type:
+                                                    "string"
+
+                                            }
+
+                                        },
+
+                                        required: [
+
+                                            "title",
+
+                                            "organization",
+
+                                            "dates",
+
+                                            "description"
+
+                                        ]
+
+                                    }
+
+                                },
+
+                                projects: {
+
+                                    type:
+                                        "array",
+
+                                    items: {
+
+                                        type:
+                                            "object",
+
+                                        properties: {
+
+                                            title: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            description: {
+
+                                                type:
+                                                    "string"
+
+                                            },
+
+                                            technologies: {
+
+                                                type:
+                                                    "array",
+
+                                                items: {
+
+                                                    type:
+                                                        "string"
+
+                                                }
+
+                                            }
+
+                                        },
+
+                                        required: [
+
+                                            "title",
+
+                                            "description",
+
+                                            "technologies"
+
+                                        ]
+
+                                    }
+
+                                },
+
+                                certifications: {
+
+                                    type:
+                                        "array",
+
+                                    items: {
+
+                                        type:
+                                            "string"
+
+                                    }
+
+                                }
+
+                            },
+
+                            required: [
+
+                                "name",
+
+                                "email",
+
+                                "phone",
+
+                                "skills",
+
+                                "education",
+
+                                "experience",
+
+                                "projects",
+
+                                "certifications"
+
+                            ]
+
+                        }
+
+                    }
 
                 });
 
 
         } catch (aiError) {
 
-            console.error(
-                "================================="
-            );
+            const status =
+                aiError?.status ||
+                aiError?.statusCode ||
+                aiError?.code ||
+                aiError?.response?.status ||
+                null;
+
 
             console.error(
-                "GEMINI ERROR"
-            );
 
-            console.error(
-                "STATUS:",
-                aiError.status
-            );
+                "Gemini Resume Parse Error:",
 
-            console.error(
-                "MESSAGE:",
+                status,
+
                 aiError.message
+
             );
 
-            console.error(
-                aiError
-            );
-
-            console.error(
-                "================================="
-            );
-
-
-            // =================================================
-            // QUOTA
-            // =================================================
 
             if (
-                aiError.status === 429
+                status === 429 ||
+                status === "429"
             ) {
 
                 return res.status(429).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
                         "Gemini API quota exceeded. Please try again later.",
 
                     errorType:
-                        "QUOTA_EXCEEDED",
+                        "QUOTA_EXCEEDED"
 
                 });
 
             }
 
 
-            // =================================================
-            // TEMPORARY UNAVAILABLE
-            // =================================================
-
             if (
-                aiError.status === 503
+                status === 503 ||
+                status === "503"
             ) {
 
                 return res.status(503).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
                         "Gemini AI is temporarily unavailable. Please try again later.",
 
                     errorType:
-                        "AI_UNAVAILABLE",
+                        "AI_UNAVAILABLE"
 
                 });
 
             }
 
-
-            // =================================================
-            // MODEL NOT FOUND
-            // =================================================
 
             if (
-                aiError.status === 404
+                status === 404 ||
+                status === "404"
             ) {
 
-                return res.status(404).json({
+                return res.status(503).json({
 
-                    success: false,
+                    success:
+                        false,
 
                     message:
-                        "Gemini model is unavailable. Please check the configured Gemini model.",
+                        "Gemini AI model is currently unavailable.",
 
                     errorType:
-                        "MODEL_NOT_FOUND",
+                        "MODEL_UNAVAILABLE"
 
                 });
 
             }
 
 
-            return res.status(500).json({
+            return res.status(502).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    aiError.message ||
-                    "AI resume analysis failed.",
+                    "AI resume analysis failed. Please try again.",
 
                 errorType:
-                    "AI_ERROR",
+                    "AI_ERROR"
 
             });
 
@@ -793,19 +1555,29 @@ ${resumeText}
         // =================================================
 
         let result =
-            response.text ||
+            response?.text ||
             "";
 
 
-        console.log("=================================");
-        console.log(
-            "GEMINI RAW RESPONSE"
-        );
-        console.log("=================================");
-        console.log(
-            result
-        );
-        console.log("=================================");
+        if (
+            typeof result !== "string" ||
+            !result.trim()
+        ) {
+
+            return res.status(502).json({
+
+                success:
+                    false,
+
+                message:
+                    "Gemini returned an empty response.",
+
+                errorType:
+                    "EMPTY_AI_RESPONSE"
+
+            });
+
+        }
 
 
         // =================================================
@@ -829,7 +1601,7 @@ ${resumeText}
 
 
         // =================================================
-        // JSON EXTRACTION
+        // EXTRACT JSON
         // =================================================
 
         const firstBrace =
@@ -846,7 +1618,8 @@ ${resumeText}
 
         if (
             firstBrace !== -1 &&
-            lastBrace !== -1
+            lastBrace !== -1 &&
+            lastBrace > firstBrace
         ) {
 
             result =
@@ -879,26 +1652,20 @@ ${resumeText}
         } catch (parseError) {
 
             console.error(
-                "Gemini JSON Parse Error:",
-                parseError
+                "Gemini returned invalid JSON."
             );
 
 
-            console.error(
-                "Gemini Result:",
-                result
-            );
+            return res.status(502).json({
 
-
-            return res.status(500).json({
-
-                success: false,
+                success:
+                    false,
 
                 message:
                     "AI returned an invalid resume analysis.",
 
                 errorType:
-                    "INVALID_AI_RESPONSE",
+                    "INVALID_AI_RESPONSE"
 
             });
 
@@ -906,7 +1673,17 @@ ${resumeText}
 
 
         // =================================================
-        // CALCULATE ATS SCORE
+        // NORMALIZE
+        // =================================================
+
+        parsedResume =
+            normalizeParsedResume(
+                parsedResume
+            );
+
+
+        // =================================================
+        // ATS SCORE
         // =================================================
 
         const atsScore =
@@ -915,22 +1692,8 @@ ${resumeText}
             );
 
 
-        console.log(
-            "================================="
-        );
-
-        console.log(
-            "CALCULATED ATS SCORE:",
-            atsScore
-        );
-
-        console.log(
-            "================================="
-        );
-
-
         // =================================================
-        // SAVE DATA
+        // SAVE
         // =================================================
 
         resumeRecord.parsedData =
@@ -945,74 +1708,25 @@ ${resumeText}
 
 
         // =================================================
-        // DATABASE VERIFICATION
-        // =================================================
-
-        const savedResume =
-            await Resume.findById(
-                resumeRecord._id
-            );
-
-
-        console.log("=================================");
-        console.log(
-            "DATABASE VERIFICATION"
-        );
-        console.log(
-            "RESUME ID:",
-            savedResume?._id
-        );
-        console.log(
-            "ATS SCORE:",
-            savedResume?.atsScore
-        );
-        console.log(
-            "HAS PARSED DATA:",
-            !!savedResume?.parsedData
-        );
-        console.log(
-            "PARSED DATA:",
-            savedResume?.parsedData
-        );
-        console.log("=================================");
-
-
-        if (
-            !savedResume ||
-            !savedResume.parsedData
-        ) {
-
-            return res.status(500).json({
-
-                success: false,
-
-                message:
-                    "Resume was analyzed but parsed data could not be saved.",
-
-                errorType:
-                    "PARSED_DATA_NOT_SAVED",
-
-            });
-
-        }
-
-
-        // =================================================
         // SUCCESS
         // =================================================
 
         return res.status(200).json({
 
-            success: true,
+            success:
+                true,
 
             message:
-                "Resume Parsed Successfully",
+                "Resume parsed successfully.",
+
+            resumeId:
+                resumeRecord._id,
 
             atsScore:
-                savedResume.atsScore,
+                resumeRecord.atsScore,
 
             data:
-                savedResume.parsedData,
+                resumeRecord.parsedData
 
         });
 
@@ -1020,33 +1734,212 @@ ${resumeText}
     } catch (error) {
 
         console.error(
-            "================================="
-        );
-
-        console.error(
-            "RESUME PARSING ERROR"
-        );
-
-        console.error(
-            error
-        );
-
-        console.error(
-            "================================="
+            "Resume Parsing Error:",
+            error.message
         );
 
 
         return res.status(500).json({
 
-            success: false,
+            success:
+                false,
 
             message:
-                error.message ||
                 "Something went wrong while processing the resume.",
+
+            errorType:
+                "RESUME_PARSE_ERROR"
 
         });
 
     }
+
+};
+
+
+// =====================================================
+// NORMALIZE PARSED RESUME
+// =====================================================
+
+const normalizeParsedResume = (
+    data = {}
+) => {
+
+    const education =
+        Array.isArray(
+            data.education
+        )
+
+            ? data.education
+
+                .map(
+
+                    item => ({
+
+                        institution:
+                            safeString(
+                                item?.institution
+                            ),
+
+                        degree:
+                            safeString(
+                                item?.degree
+                            ),
+
+                        dates:
+                            safeString(
+                                item?.dates
+                            ),
+
+                        cgpa:
+                            safeString(
+                                item?.cgpa
+                            )
+
+                    })
+
+                )
+
+                .filter(
+
+                    item =>
+
+                        item.institution ||
+                        item.degree ||
+                        item.dates ||
+                        item.cgpa
+
+                )
+
+            : [];
+
+
+    const experience =
+        Array.isArray(
+            data.experience
+        )
+
+            ? data.experience
+
+                .map(
+
+                    item => ({
+
+                        title:
+                            safeString(
+                                item?.title
+                            ),
+
+                        organization:
+                            safeString(
+                                item?.organization
+                            ),
+
+                        dates:
+                            safeString(
+                                item?.dates
+                            ),
+
+                        description:
+                            safeString(
+                                item?.description
+                            )
+
+                    })
+
+                )
+
+                .filter(
+
+                    item =>
+
+                        item.title ||
+                        item.organization ||
+                        item.dates ||
+                        item.description
+
+                )
+
+            : [];
+
+
+    const projects =
+        Array.isArray(
+            data.projects
+        )
+
+            ? data.projects
+
+                .map(
+
+                    item => ({
+
+                        title:
+                            safeString(
+                                item?.title
+                            ),
+
+                        description:
+                            safeString(
+                                item?.description
+                            ),
+
+                        technologies:
+                            normalizeArray(
+                                item?.technologies
+                            )
+
+                    })
+
+                )
+
+                .filter(
+
+                    item =>
+
+                        item.title ||
+                        item.description ||
+                        item.technologies.length > 0
+
+                )
+
+            : [];
+
+
+    return {
+
+        name:
+            safeString(
+                data.name
+            ),
+
+        email:
+            safeString(
+                data.email
+            ),
+
+        phone:
+            safeString(
+                data.phone
+            ),
+
+        skills:
+            normalizeUniqueArray(
+                data.skills
+            ),
+
+        education,
+
+        experience,
+
+        projects,
+
+        certifications:
+            normalizeUniqueArray(
+                data.certifications
+            )
+
+    };
 
 };
 
@@ -1069,10 +1962,11 @@ const getMyResumes = async (
 
             return res.status(401).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "User authentication required.",
+                    "User authentication required."
 
             });
 
@@ -1083,19 +1977,22 @@ const getMyResumes = async (
             await Resume.find({
 
                 user:
-                    req.user.id,
+                    req.user.id
 
             }).sort({
 
                 createdAt:
-                    -1,
+                    -1
 
             });
 
 
-        let readinessScore = 0;
+        let readinessScore =
+            0;
 
-        let suggestions = [];
+
+        let suggestions =
+            [];
 
 
         // =================================================
@@ -1110,12 +2007,22 @@ const getMyResumes = async (
                 resumes[0];
 
 
-            // Use ATS score directly.
-
             const atsScore =
-                Number(
-                    latestResume.atsScore
-                ) || 0;
+                Math.min(
+
+                    100,
+
+                    Math.max(
+
+                        0,
+
+                        Number(
+                            latestResume.atsScore
+                        ) || 0
+
+                    )
+
+                );
 
 
             readinessScore =
@@ -1123,7 +2030,7 @@ const getMyResumes = async (
 
 
             // =================================================
-            // SUGGESTIONS
+            // ATS SUGGESTIONS
             // =================================================
 
             if (
@@ -1131,7 +2038,9 @@ const getMyResumes = async (
             ) {
 
                 suggestions.push(
-                    "Improve ATS keywords."
+
+                    "Improve ATS keywords and tailor your resume to the target job."
+
                 );
 
             }
@@ -1142,7 +2051,9 @@ const getMyResumes = async (
             ) {
 
                 suggestions.push(
+
                     "Add more relevant technical skills."
+
                 );
 
             }
@@ -1153,25 +2064,16 @@ const getMyResumes = async (
             ) {
 
                 suggestions.push(
+
                     "Add measurable achievements and strong action verbs."
-                );
 
-            }
-
-
-            if (
-                atsScore >= 90
-            ) {
-
-                suggestions.push(
-                    "Excellent resume. Keep it updated."
                 );
 
             }
 
 
             // =================================================
-            // MISSING RESUME INFORMATION
+            // PARSED DATA SUGGESTIONS
             // =================================================
 
             const parsed =
@@ -1187,7 +2089,9 @@ const getMyResumes = async (
                 ) {
 
                     suggestions.push(
+
                         "Consider adding a professional phone number."
+
                     );
 
                 }
@@ -1201,7 +2105,9 @@ const getMyResumes = async (
                 ) {
 
                     suggestions.push(
+
                         "Add relevant projects to demonstrate your practical skills."
+
                     );
 
                 }
@@ -1215,10 +2121,96 @@ const getMyResumes = async (
                 ) {
 
                     suggestions.push(
+
                         "Add relevant certifications if you have them."
+
                     );
 
                 }
+
+
+                if (
+                    !Array.isArray(
+                        parsed.education
+                    ) ||
+                    parsed.education.length === 0
+                ) {
+
+                    suggestions.push(
+
+                        "Add your education details."
+
+                    );
+
+                }
+
+
+                if (
+                    !Array.isArray(
+                        parsed.skills
+                    ) ||
+                    parsed.skills.length < 5
+                ) {
+
+                    suggestions.push(
+
+                        "Add more relevant skills that you genuinely possess."
+
+                    );
+
+                }
+
+
+                if (
+                    Array.isArray(
+                        parsed.experience
+                    ) &&
+                    parsed.experience.length > 0
+                ) {
+
+                    const hasDescription =
+                        parsed.experience.some(
+
+                            experience =>
+
+                                hasText(
+                                    experience?.description
+                                )
+
+                        );
+
+
+                    if (
+                        !hasDescription
+                    ) {
+
+                        suggestions.push(
+
+                            "Add clear descriptions of your experience and achievements."
+
+                        );
+
+                    }
+
+                }
+
+            }
+
+
+            // =================================================
+            // EXCELLENT RESUME
+            // =================================================
+
+            if (
+                atsScore >= 90 &&
+                suggestions.length === 0
+            ) {
+
+                suggestions.push(
+
+                    "Excellent resume. Keep it updated."
+
+                );
 
             }
 
@@ -1236,19 +2228,16 @@ const getMyResumes = async (
             );
 
 
-        // =================================================
-        // RESPONSE
-        // =================================================
-
         return res.status(200).json({
 
-            success: true,
+            success:
+                true,
 
             resumes,
 
             readinessScore,
 
-            suggestions,
+            suggestions
 
         });
 
@@ -1256,17 +2245,21 @@ const getMyResumes = async (
     } catch (error) {
 
         console.error(
+
             "Get Resumes Error:",
-            error
+
+            error.message
+
         );
 
 
         return res.status(500).json({
 
-            success: false,
+            success:
+                false,
 
             message:
-                error.message,
+                "Unable to fetch resumes."
 
         });
 
@@ -1287,7 +2280,7 @@ const deleteResume = async (
     try {
 
         // =================================================
-        // AUTH CHECK
+        // AUTH
         // =================================================
 
         if (
@@ -1297,10 +2290,11 @@ const deleteResume = async (
 
             return res.status(401).json({
 
-                success: false,
+                success:
+                    false,
 
                 message:
-                    "User authentication required.",
+                    "User authentication required."
 
             });
 
@@ -1308,86 +2302,90 @@ const deleteResume = async (
 
 
         // =================================================
-        // FIND RESUME
+        // ID VALIDATION
         // =================================================
 
-        const resume =
-            await Resume.findById(
-                req.params.id
-            );
-
-
-        if (!resume) {
-
-            return res.status(404).json({
-
-                success: false,
-
-                message:
-                    "Resume Not Found",
-
-            });
-
-        }
-
-
-        // =================================================
-        // OWNERSHIP CHECK
-        // =================================================
-
-        if (
-            resume.user.toString() !==
-            req.user.id.toString()
-        ) {
-
-            return res.status(403).json({
-
-                success: false,
-
-                message:
-                    "Unauthorized",
-
-            });
-
-        }
-
-
-        // =================================================
-        // DELETE DATABASE RECORD
-        // =================================================
-
-        await Resume.findByIdAndDelete(
-            req.params.id
-        );
-
-
-        // =================================================
-        // DELETE FILE
-        // =================================================
-
-        const filePath =
-            `uploads/${resume.resumeUrl}`;
+        const resumeId =
+            req.params.id;
 
 
         if (
-            fs.existsSync(
-                filePath
+            !mongoose.Types.ObjectId.isValid(
+                resumeId
             )
         ) {
 
-            fs.unlinkSync(
-                filePath
-            );
+            return res.status(400).json({
+
+                success:
+                    false,
+
+                message:
+                    "Invalid resume ID."
+
+            });
 
         }
+
+
+        // =================================================
+        // FIND USER'S RESUME
+        // =================================================
+
+        const resume =
+            await Resume.findOne({
+
+                _id:
+                    resumeId,
+
+                user:
+                    req.user.id
+
+            });
+
+
+        if (
+            !resume
+        ) {
+
+            return res.status(404).json({
+
+                success:
+                    false,
+
+                message:
+                    "Resume not found."
+
+            });
+
+        }
+
+
+        // =================================================
+        // DELETE DATABASE
+        // =================================================
+
+        await resume.deleteOne();
+
+
+        // =================================================
+        // DELETE CLOUDINARY
+        // =================================================
+
+        await deleteFromCloudinary(
+
+            resume.cloudinaryPublicId
+
+        );
 
 
         return res.status(200).json({
 
-            success: true,
+            success:
+                true,
 
             message:
-                "Resume Deleted Successfully",
+                "Resume deleted successfully."
 
         });
 
@@ -1395,21 +2393,201 @@ const deleteResume = async (
     } catch (error) {
 
         console.error(
+
             "Delete Resume Error:",
-            error
+
+            error.message
+
         );
 
 
         return res.status(500).json({
 
-            success: false,
+            success:
+                false,
 
             message:
-                error.message,
+                "Unable to delete resume."
 
         });
 
     }
+
+};
+
+
+// =====================================================
+// SAFE STRING
+// =====================================================
+
+const safeString = (
+    value
+) => {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
+        return "";
+
+    }
+
+
+    return String(
+        value
+    )
+        .trim()
+        .slice(
+            0,
+            2000
+        );
+
+};
+
+
+// =====================================================
+// CHECK TEXT
+// =====================================================
+
+const hasText = (
+    value
+) => {
+
+    return (
+
+        value !== null &&
+        value !== undefined &&
+        String(value).trim().length > 0
+
+    );
+
+};
+
+
+// =====================================================
+// VALID EMAIL
+// =====================================================
+
+const hasValidEmail = (
+    email
+) => {
+
+    if (
+        !hasText(email)
+    ) {
+
+        return false;
+
+    }
+
+
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+
+        String(email).trim()
+
+    );
+
+};
+
+
+// =====================================================
+// NORMALIZE ARRAY
+// =====================================================
+
+const normalizeArray = (
+    value
+) => {
+
+    if (
+        !Array.isArray(
+            value
+        )
+    ) {
+
+        return [];
+
+    }
+
+
+    return value
+
+        .map(
+
+            item =>
+                safeString(
+                    item
+                )
+
+        )
+
+        .filter(
+            Boolean
+        )
+
+        .slice(
+            0,
+            100
+        );
+
+};
+
+
+// =====================================================
+// NORMALIZE UNIQUE ARRAY
+// =====================================================
+
+const normalizeUniqueArray = (
+    value
+) => {
+
+    const items =
+        normalizeArray(
+            value
+        );
+
+
+    const seen =
+        new Set();
+
+
+    const result =
+        [];
+
+
+    for (
+        const item
+        of items
+    ) {
+
+        const key =
+            item.toLowerCase();
+
+
+        if (
+            seen.has(
+                key
+            )
+        ) {
+
+            continue;
+
+        }
+
+
+        seen.add(
+            key
+        );
+
+
+        result.push(
+            item
+        );
+
+    }
+
+
+    return result;
 
 };
 
@@ -1426,6 +2604,6 @@ module.exports = {
 
     getMyResumes,
 
-    deleteResume,
+    deleteResume
 
 };

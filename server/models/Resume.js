@@ -20,11 +20,17 @@ const resumeSchema = new mongoose.Schema(
         filename: {
             type: String,
             required: true,
+            trim: true,
         },
 
         resumeUrl: {
             type: String,
             required: true,
+        },
+
+        cloudinaryPublicId: {
+            type: String,
+            default: "",
         },
 
 
@@ -35,6 +41,8 @@ const resumeSchema = new mongoose.Schema(
         atsScore: {
             type: Number,
             default: 0,
+            min: 0,
+            max: 100,
         },
 
 

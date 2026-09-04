@@ -1,29 +1,74 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 
-const uploadDir = path.join(__dirname, "..", "uploads");
 
-// Create uploads folder if it doesn't exist
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
+// =====================================================
+// MEMORY STORAGE
+// =====================================================
+//
+// The uploaded PDF is kept temporarily in memory.
+// It is NOT permanently stored on the Render filesystem.
+//
+// The controller will upload the file to Cloudinary.
+//
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
+const storage =
+    multer.memoryStorage();
 
-    filename: function (req, file, cb) {
-        const uniqueName =
-            Date.now() + "-" + file.originalname;
 
-        cb(null, uniqueName);
+// =====================================================
+// FILE FILTER
+// =====================================================
+
+const fileFilter = (
+    req,
+    file,
+    cb
+) => {
+
+    if (
+        file.mimetype ===
+        "application/pdf"
+    ) {
+
+        cb(
+            null,
+            true
+        );
+
+    } else {
+
+        cb(
+            new Error(
+                "Only PDF files are allowed."
+            )
+        );
+
     }
-});
 
-const upload = multer({
-    storage: storage
-});
+};
+
+
+// =====================================================
+// MULTER
+// =====================================================
+
+const upload =
+    multer({
+
+        storage,
+
+        fileFilter,
+
+        limits: {
+
+            // 5 MB maximum resume size
+
+            fileSize:
+                5 * 1024 * 1024,
+
+        },
+
+    });
+
 
 module.exports = upload;
