@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const dns = require("dns");
 
 const connectDB = require("./config/db");
 
@@ -23,6 +24,70 @@ const app = express();
 // =====================================================
 
 connectDB();
+
+
+// =====================================================
+// STARTUP DNS DIAGNOSTIC
+// =====================================================
+
+console.log("======================================");
+console.log("NETWORK DIAGNOSTIC");
+console.log("======================================");
+
+dns.lookup(
+    "api.cloudinary.com",
+    (error, address, family) => {
+
+        if (error) {
+
+            console.error(
+                "Cloudinary DNS ERROR:",
+                error.message
+            );
+
+        } else {
+
+            console.log(
+                "Cloudinary DNS OK:",
+                {
+                    address,
+                    family
+                }
+            );
+
+        }
+
+    }
+);
+
+
+dns.lookup(
+    "generativelanguage.googleapis.com",
+    (error, address, family) => {
+
+        if (error) {
+
+            console.error(
+                "Gemini DNS ERROR:",
+                error.message
+            );
+
+        } else {
+
+            console.log(
+                "Gemini DNS OK:",
+                {
+                    address,
+                    family
+                }
+            );
+
+        }
+
+    }
+);
+
+console.log("======================================");
 
 
 // =====================================================
@@ -49,8 +114,6 @@ app.use(
             callback
         ) {
 
-            // Allow requests with no origin
-            // such as Postman or server-to-server requests
             if (!origin) {
 
                 return callback(
