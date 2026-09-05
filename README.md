@@ -125,6 +125,6 @@ AI-Resume-Matcher/
 │   ├── saved-jobs.png
 │   ├── applications.png
 │   ├── profile.png
-│   └── admin-dashboard.png
+│   └── resume-history.png
 │
 └── README.md
